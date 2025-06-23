@@ -281,22 +281,24 @@ export default function Map({
     );
   }
 
-  if (!isLoaded) {
-    return (
-      <div className="w-full h-full rounded-lg border bg-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-          <p className="text-gray-600 text-sm">Google Maps betöltése...</p>
-        </div>
-      </div>
-    );
-  }
-
+  // Always render the map container so the Google Maps API can initialize.
   return (
-    <div 
-      ref={mapRef} 
-      className="w-full h-full rounded-lg"
+    <div
+      className="w-full h-full rounded-lg relative"
       style={{ minHeight: '400px' }}
-    />
+    >
+      {/* Map container */}
+      <div ref={mapRef} className="w-full h-full rounded-lg" />
+
+      {/* Loading overlay */}
+      {!isLoaded && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-75">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+            <p className="text-gray-600 text-sm">Google Maps betöltése...</p>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
