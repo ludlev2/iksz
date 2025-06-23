@@ -1,0 +1,26 @@
+[
+  {
+    "id": "1",
+    "studentId": "1",
+    "studentName": "Kovács Anna",
+    "opportunityId": "1",
+    "opportunityTitle": "Környezetvédelmi akció a Városligetben",
+    "hours": 4,
+    "date": "2024-02-15",
+    "status": "pending",
+    "submittedAt": "2024-02-16T10:30:00Z",
+    "evidence": "Részt vettem a szemétszedésben és virágültetésben."
+  },
+  {
+    "id": "2",
+    "studentId": "1",
+    "studentName": "Kovács Anna",
+    "opportunityId": "3",
+    "opportunityTitle": "Állatmenhely önkéntes munka",
+    "hours": 5,
+    "date": "2024-02-20",
+    "status": "pending",
+    "submittedAt": "2024-02-21T14:15:00Z",
+    "evidence": "Kutyákat sétáltattam és segítettem a kennelok takarításában."
+  }
+]

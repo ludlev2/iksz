@@ -1,0 +1,140 @@
+[
+  {
+    "id": "1",
+    "title": "Környezetvédelmi akció a Városligetben",
+    "description": "Csatlakozz hozzánk egy környezetvédelmi akcióhoz! Szemetet szedünk és virágokat ültetünk a Városligetben. Minden eszközt biztosítunk, csak jó kedvet hozz magaddal!",
+    "category": "environment",
+    "location": {
+      "address": "Városliget, Budapest",
+      "lat": 47.5186,
+      "lng": 19.0823
+    },
+    "date": "2024-02-15",
+    "time": "09:00",
+    "duration": 4,
+    "capacity": 20,
+    "registered": 12,
+    "provider": {
+      "name": "Zöld Budapest Egyesület",
+      "contact": "info@zoldbudapest.hu",
+      "phone": "+36 1 234 5678"
+    },
+    "requirements": "Kényelmes ruházat, munkakesztyű ajánlott",
+    "status": "active"
+  },
+  {
+    "id": "2",
+    "title": "Idősek otthonában segítségnyújtás",
+    "description": "Segíts az idős lakóknak a mindennapi tevékenységekben. Beszélgetés, társasjátékok, séta a kertben. Egy mosolygós délután garantált!",
+    "category": "elderly",
+    "location": {
+      "address": "Margit körút 45, Budapest",
+      "lat": 47.5125,
+      "lng": 19.0364
+    },
+    "date": "2024-02-18",
+    "time": "14:00",
+    "duration": 3,
+    "capacity": 8,
+    "registered": 5,
+    "provider": {
+      "name": "Napfény Idősek Otthona",
+      "contact": "kapcsolat@napfenyotthon.hu",
+      "phone": "+36 1 345 6789"
+    },
+    "requirements": "Türelem, empátia, jó kommunikációs készség",
+    "status": "active"
+  },
+  {
+    "id": "3",
+    "title": "Állatmenhely önkéntes munka",
+    "description": "Segíts a menhelyi kutyák gondozásában! Sétáltatás, etetés, kennelok takarítása. Az állatszeretet itt elengedhetetlen!",
+    "category": "animals",
+    "location": {
+      "address": "Üllői út 200, Budapest",
+      "lat": 47.4563,
+      "lng": 19.1234
+    },
+    "date": "2024-02-20",
+    "time": "10:00",
+    "duration": 5,
+    "capacity": 15,
+    "registered": 8,
+    "provider": {
+      "name": "Budapest Állatmenhely",
+      "contact": "info@allatmenhely.hu",
+      "phone": "+36 1 456 7890"
+    },
+    "requirements": "Állatszeretet, nem félni a kutyáktól",
+    "status": "active"
+  },
+  {
+    "id": "4",
+    "title": "Gyermekotthon programszervezés",
+    "description": "Kreatív foglalkozások szervezése gyermekotthonban élő gyerekeknek. Kézműves tevékenységek, játékok, sport.",
+    "category": "children",
+    "location": {
+      "address": "Váci út 150, Budapest",
+      "lat": 47.5567,
+      "lng": 19.0678
+    },
+    "date": "2024-02-22",
+    "time": "15:00",
+    "duration": 3,
+    "capacity": 6,
+    "registered": 4,
+    "provider": {
+      "name": "Remény Gyermekotthon",
+      "contact": "info@remenyotthon.hu",
+      "phone": "+36 1 567 8901"
+    },
+    "requirements": "Kreativitás, gyerekszeretet, felelősségtudat",
+    "status": "active"
+  },
+  {
+    "id": "5",
+    "title": "Hajléktalan ellátás télen",
+    "description": "Meleg étel osztása és alapvető szükségletek biztosítása hajléktalan embereknek a téli időszakban.",
+    "category": "social",
+    "location": {
+      "address": "Keleti pályaudvar, Budapest",
+      "lat": 47.5000,
+      "lng": 19.0833
+    },
+    "date": "2024-02-25",
+    "time": "18:00",
+    "duration": 4,
+    "capacity": 12,
+    "registered": 9,
+    "provider": {
+      "name": "Máltai Szeretetszolgálat",
+      "contact": "budapest@maltai.hu",
+      "phone": "+36 1 678 9012"
+    },
+    "requirements": "Empátia, türelem, meleg ruházat",
+    "status": "active"
+  },
+  {
+    "id": "6",
+    "title": "Könyvtári digitalizálás",
+    "description": "Segítség régi könyvek és dokumentumok digitalizálásában. Számítógépes ismeretek szükségesek.",
+    "category": "education",
+    "location": {
+      "address": "Szabó Ervin tér 1, Budapest",
+      "lat": 47.4925,
+      "lng": 19.0613
+    },
+    "date": "2024-02-28",
+    "time": "13:00",
+    "duration": 4,
+    "capacity": 10,
+    "registered": 3,
+    "provider": {
+      "name": "Fővárosi Szabó Ervin Könyvtár",
+      "contact": "onkentes@fszek.hu",
+      "phone": "+36 1 789 0123"
+    },
+    "requirements": "Alapszintű számítógépes ismeretek",
+    "status": "active"
+  }
+]
