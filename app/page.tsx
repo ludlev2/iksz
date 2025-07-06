@@ -203,7 +203,7 @@ export default function Home() {
             <span className="text-xl font-bold">IKSZ Finder</span>
           </div>
           <p className="text-gray-400 text-lg">
-            © 2024 IKSZ Finder. Minden jog fenntartva.
+            © 2025 IKSZ Finder. Minden jog fenntartva.
           </p>
         </div>
       </footer>

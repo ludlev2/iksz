@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
+import { useOpportunities } from '@/contexts/OpportunityContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -21,6 +23,8 @@ const categories = [
 
 export default function NewOpportunityPage() {
   const router = useRouter();
+  const { user } = useAuth();
+  const { addOpportunity } = useOpportunities();
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -63,8 +67,41 @@ export default function NewOpportunityPage() {
       return;
     }
 
-    // Mock submission
-    console.log('Submitting opportunity:', formData);
+    if (!formData.address || !formData.capacity || !formData.date || !formData.time || !formData.duration) {
+      toast.error('Kérjük töltse ki az összes kötelező mezőt!');
+      return;
+    }
+
+    if (!user) {
+      toast.error('Nincs bejelentkezett felhasználó!');
+      return;
+    }
+
+    // Create opportunity object
+    const opportunityData = {
+      title: formData.title,
+      description: formData.description,
+      categories: formData.categories,
+      location: {
+        address: formData.address,
+        lat: selectedLocation?.lat || 47.4979,
+        lng: selectedLocation?.lng || 19.0402
+      },
+      date: formData.date,
+      time: formData.time,
+      duration: parseInt(formData.duration),
+      capacity: parseInt(formData.capacity),
+      provider: {
+        name: user.organization || user.name,
+        contact: user.email,
+        phone: user.phone || '+36 1 234 5678'
+      },
+      requirements: formData.requirements
+    };
+
+    // Add to context
+    addOpportunity(opportunityData);
+    
     toast.success('Lehetőség sikeresen létrehozva!');
     router.push('/provider/dashboard');
   };

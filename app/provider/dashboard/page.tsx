@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOpportunities } from '@/contexts/OpportunityContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -10,30 +11,6 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Plus, LogOut, Users, Calendar, MapPin, Clock, Edit, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-
-interface Opportunity {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  location: {
-    address: string;
-    lat: number;
-    lng: number;
-  };
-  date: string;
-  time: string;
-  duration: number;
-  capacity: number;
-  registered: number;
-  provider: {
-    name: string;
-    contact: string;
-    phone: string;
-  };
-  requirements?: string;
-  status: string;
-}
 
 const categoryLabels: Record<string, string> = {
   environment: 'Környezetvédelem',
@@ -55,45 +32,26 @@ const categoryColors: Record<string, string> = {
 
 export default function ProviderDashboard() {
   const { user, logout } = useAuth();
+  const { getProviderOpportunities, deleteOpportunity, isLoading } = useOpportunities();
   const router = useRouter();
-  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (!user || user.role !== 'provider') {
       router.push('/login');
       return;
     }
-
-    // Load opportunities
-    fetch('/data/mock-opportunities.json')
-      .then(res => res.json())
-      .then((data: Opportunity[]) => {
-        // Filter opportunities for this provider
-        const providerOpportunities = data.filter(opp => 
-          opp.provider.name === user.organization
-        );
-        setOpportunities(providerOpportunities);
-        setIsLoading(false);
-      })
-      .catch(err => {
-        console.error('Error loading opportunities:', err);
-        setIsLoading(false);
-      });
   }, [user, router]);
 
   const handleDeleteOpportunity = (opportunityId: string) => {
-    setOpportunities(prev => prev.filter(opp => opp.id !== opportunityId));
+    deleteOpportunity(opportunityId);
     toast.success('Lehetőség törölve!');
   };
 
-  if (isLoading) {
+  if (isLoading || !user) {
     return <div>Betöltés...</div>;
   }
 
-  if (!user) {
-    return <div>Loading...</div>;
-  }
+  const opportunities = getProviderOpportunities(user.organization || user.name);
 
   const totalCapacity = opportunities.reduce((sum, opp) => sum + opp.capacity, 0);
   const totalRegistered = opportunities.reduce((sum, opp) => sum + opp.registered, 0);
