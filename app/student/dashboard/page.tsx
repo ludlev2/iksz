@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, Map as MapIcon, List, LogOut } from 'lucide-react';
+import { Search, Map as MapIcon, List, LogOut, HelpCircle } from 'lucide-react';
 import OpportunityCard from '@/components/OpportunityCard';
 import FilterDrawer from '@/components/FilterDrawer';
 import HourCounter from '@/components/HourCounter';
@@ -165,6 +165,10 @@ export default function StudentDashboard() {
             )}
           </div>
           <div className="flex gap-2">
+            <Button variant="outline" onClick={() => router.push('/help')}>
+              <HelpCircle className="w-4 h-4 mr-2" />
+              Szerződés Segítő
+            </Button>
             {isGuestMode ? (
               <Button onClick={() => router.push('/student')}>
                 Bejelentkezés
@@ -193,6 +197,26 @@ export default function StudentDashboard() {
 
           {/* Main Content */}
           <div className={isGuestMode ? 'lg:col-span-1' : 'lg:col-span-3'}>
+            {/* Help Center Banner */}
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg p-6 mb-6 text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">Kell segítség a szerződéshez? 📋</h3>
+                  <p className="text-blue-100">
+                    Töltsd le a szerződésmintákat, ismerj meg minden jogszabályi követelményt, és kérj segítséget lépésről lépésre.
+                  </p>
+                </div>
+                <Button 
+                  variant="secondary" 
+                  onClick={() => router.push('/help')}
+                  className="bg-white text-blue-700 hover:bg-blue-50"
+                >
+                  <HelpCircle className="w-4 h-4 mr-2" />
+                  Szerződés Segítő Központ
+                </Button>
+              </div>
+            </div>
+
             {/* Search and Filters */}
             <div className="bg-white rounded-lg border p-4 mb-6">
               <div className="flex gap-4 mb-4">
