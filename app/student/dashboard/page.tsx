@@ -44,7 +44,7 @@ interface Filters {
 }
 
 export default function StudentDashboard() {
-  const { user, logout } = useAuth();
+  const { user, logout, isGuestMode, isLoading } = useAuth();
   const router = useRouter();
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [filteredOpportunities, setFilteredOpportunities] = useState<Opportunity[]>([]);
@@ -57,10 +57,25 @@ export default function StudentDashboard() {
   });
 
   useEffect(() => {
-    if (!user || user.role !== 'student') {
+    // Wait for auth to finish loading
+    if (isLoading) {
+      return;
+    }
+
+    // Allow access if user is a logged-in student OR in guest mode
+    if (!user && !isGuestMode) {
+      console.log('No user and no guest mode, redirecting to /student');
+      router.push('/student');
+      return;
+    }
+    
+    if (user && user.role !== 'student') {
+      console.log('User is not a student, redirecting to /login');
       router.push('/login');
       return;
     }
+
+    console.log('Loading opportunities, user:', user, 'isGuestMode:', isGuestMode);
 
     // Load opportunities
     fetch('/data/mock-opportunities.json')
@@ -70,7 +85,7 @@ export default function StudentDashboard() {
         setFilteredOpportunities(data);
       })
       .catch(err => console.error('Error loading opportunities:', err));
-  }, [user, router]);
+  }, [user, isGuestMode, isLoading, router]);
 
   useEffect(() => {
     // Apply filters
@@ -108,6 +123,17 @@ export default function StudentDashboard() {
   }, [opportunities, searchQuery, filters]);
 
   const handleRequest = (opportunityId: string) => {
+    if (isGuestMode) {
+      toast.error('A jelentkezéshez be kell jelentkezned!', {
+        description: 'Hozz létre egy fiókot vagy jelentkezz be.',
+        action: {
+          label: 'Bejelentkezés',
+          onClick: () => router.push('/student')
+        }
+      });
+      return;
+    }
+    
     // Mock request logic
     console.log('Requesting opportunity:', opportunityId);
   };
@@ -116,7 +142,7 @@ export default function StudentDashboard() {
     router.push(`/opportunity/${opportunityId}`);
   };
 
-  if (!user) {
+  if (isLoading || (!user && !isGuestMode)) {
     return <div>Loading...</div>;
   }
 
@@ -126,28 +152,47 @@ export default function StudentDashboard() {
       <header className="bg-white border-b">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Üdvözlünk, {user.name}!</h1>
-            <p className="text-gray-600">{user.school} - {user.grade}. évfolyam</p>
+            {isGuestMode ? (
+              <>
+                <h1 className="text-2xl font-bold text-gray-900">Önkéntes lehetőségek</h1>
+                <p className="text-gray-600">Böngészd a lehetőségeket regisztráció nélkül</p>
+              </>
+            ) : (
+              <>
+                <h1 className="text-2xl font-bold text-gray-900">Üdvözlünk, {user?.name}!</h1>
+                <p className="text-gray-600">{user?.school} - {user?.grade}. évfolyam</p>
+              </>
+            )}
           </div>
-          <Button variant="outline" onClick={logout}>
-            <LogOut className="w-4 h-4 mr-2" />
-            Kijelentkezés
-          </Button>
+          <div className="flex gap-2">
+            {isGuestMode ? (
+              <Button onClick={() => router.push('/student')}>
+                Bejelentkezés
+              </Button>
+            ) : (
+              <Button variant="outline" onClick={logout}>
+                <LogOut className="w-4 h-4 mr-2" />
+                Kijelentkezés
+              </Button>
+            )}
+          </div>
         </div>
       </header>
 
       <div className="container mx-auto px-4 py-6">
-        <div className="grid lg:grid-cols-4 gap-6">
-          {/* Sidebar */}
-          <div className="lg:col-span-1">
-            <HourCounter 
-              completedHours={user.completedHours || 0}
-              pendingHours={user.pendingHours || 0}
-            />
-          </div>
+        <div className={`grid gap-6 ${isGuestMode ? 'lg:grid-cols-1' : 'lg:grid-cols-4'}`}>
+          {/* Sidebar - Only show for logged-in users */}
+          {!isGuestMode && (
+            <div className="lg:col-span-1">
+              <HourCounter 
+                completedHours={user?.completedHours || 0}
+                pendingHours={user?.pendingHours || 0}
+              />
+            </div>
+          )}
 
           {/* Main Content */}
-          <div className="lg:col-span-3">
+          <div className={isGuestMode ? 'lg:col-span-1' : 'lg:col-span-3'}>
             {/* Search and Filters */}
             <div className="bg-white rounded-lg border p-4 mb-6">
               <div className="flex gap-4 mb-4">
@@ -186,7 +231,7 @@ export default function StudentDashboard() {
                         <OpportunityCard
                           key={opportunity.id}
                           opportunity={opportunity}
-                          distance={Math.random() * 10} // Mock distance
+                          distance={isGuestMode ? undefined : Math.random() * 10} // Hide distance for guest users
                           onRequest={handleRequest}
                         />
                       ))
