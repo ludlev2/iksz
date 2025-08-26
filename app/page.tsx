@@ -15,11 +15,11 @@ export default function Home() {
             </div>
             <h1 className="text-xl font-bold text-gray-900">IKSZ Finder</h1>
           </div>
-          <Link href="/login">
+          {/* <Link href="/login">
             <Button variant="outline" className="border-gray-200 hover:bg-gray-50">
               Bejelentkezés
             </Button>
-          </Link>
+          </Link> */}
         </div>
       </header>
 
