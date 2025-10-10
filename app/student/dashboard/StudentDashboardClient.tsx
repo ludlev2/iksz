@@ -15,6 +15,13 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -28,7 +35,7 @@ import HourCounter from '@/components/HourCounter';
 import type { Opportunity } from '@/lib/opportunity-service';
 import { createClient } from '@/utils/supabase/client';
 
-const Map = dynamic(() => import('@/components/Map'), {
+const OpportunityMap = dynamic(() => import('@/components/Map'), {
   ssr: false,
   loading: () => (
     <div className="h-96 rounded-lg border bg-gray-100 flex items-center justify-center">
@@ -37,10 +44,13 @@ const Map = dynamic(() => import('@/components/Map'), {
   ),
 });
 
+type SortOption = 'recent' | 'soonest' | 'distance';
+
 interface Filters {
   distance: number;
   categories: string[];
   date: Date | undefined;
+  sort: SortOption;
 }
 
 interface StudentDashboardClientProps {
@@ -67,6 +77,32 @@ interface UpcomingShiftItem {
   organizationName: string;
   location: string | null;
 }
+
+interface CategoryOption {
+  id: string;
+  slug: string;
+  label: string;
+}
+
+type AugmentedOpportunity = Opportunity & {
+  hasPendingApplication?: boolean;
+};
+
+const DEFAULT_DISTANCE = 10;
+const DEFAULT_SORT: SortOption = 'recent';
+
+const createDefaultFilters = (): Filters => ({
+  distance: DEFAULT_DISTANCE,
+  categories: [],
+  date: undefined,
+  sort: DEFAULT_SORT,
+});
+
+const sortOptions: { value: SortOption; label: string }[] = [
+  { value: 'recent', label: 'Legújabb' },
+  { value: 'soonest', label: 'Legközelebbi időpont' },
+  { value: 'distance', label: 'Legközelebbi távolság' },
+];
 
 const formatDate = (isoDate: string) =>
   new Intl.DateTimeFormat('hu-HU', {
@@ -101,11 +137,7 @@ export default function StudentDashboardClient({ initialOpportunities }: Student
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('list');
-  const [filters, setFilters] = useState<Filters>({
-    distance: 10,
-    categories: [],
-    date: undefined,
-  });
+  const [filters, setFilters] = useState<Filters>(() => createDefaultFilters());
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [favoritesLoading, setFavoritesLoading] = useState(false);
   const [favoritesError, setFavoritesError] = useState<string | null>(null);
@@ -120,6 +152,13 @@ export default function StudentDashboardClient({ initialOpportunities }: Student
   const [signupLoadingId, setSignupLoadingId] = useState<string | null>(null);
   const [shiftRegistrations, setShiftRegistrations] = useState<Record<string, number>>({});
   const [cancellingApplicationId, setCancellingApplicationId] = useState<string | null>(null);
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [categoriesError, setCategoriesError] = useState<string | null>(null);
+
+  const handleResetFilters = useCallback(() => {
+    setFilters(createDefaultFilters());
+  }, []);
 
   const handleEmailDialogOpenChange = useCallback((open: boolean) => {
     setEmailDialogOpen(open);
@@ -377,27 +416,67 @@ export default function StudentDashboardClient({ initialOpportunities }: Student
     });
   }, [initialOpportunities, refreshShiftRegistration]);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadCategories = async () => {
+      setCategoriesLoading(true);
+      setCategoriesError(null);
+
+      const { data, error } = await supabase
+        .from('opportunity_categories')
+        .select('id, slug, label_hu')
+        .order('label_hu', { ascending: true });
+
+      if (!isMounted) {
+        return;
+      }
+
+      if (error) {
+        console.error('Error loading opportunity categories:', error);
+        setCategoriesError('Nem sikerült betölteni a kategóriákat.');
+        setCategories([]);
+      } else {
+        setCategories(
+          (data ?? []).map((category) => ({
+            id: category.id,
+            slug: category.slug,
+            label: category.label_hu ?? category.slug,
+          })),
+        );
+      }
+
+      setCategoriesLoading(false);
+    };
+
+    loadCategories();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [supabase]);
+
   const favoriteIds = useMemo(
     () => new Set(favorites.map((favorite) => favorite.opportunityId)),
     [favorites],
   );
 
-const opportunitiesWithCounts = useMemo(
-  () =>
-    initialOpportunities.map((opportunity) => {
-      if (!opportunity.nextShift) {
-        return {
-          ...opportunity,
-          hasPendingApplication: false,
-        };
-      }
+  const opportunitiesWithCounts = useMemo<AugmentedOpportunity[]>(
+    () =>
+      initialOpportunities.map((opportunity) => {
+        if (!opportunity.nextShift) {
+          return {
+            ...opportunity,
+            hasPendingApplication: false,
+          };
+        }
 
-      const registeredOverride = shiftRegistrations[opportunity.nextShift.id];
-      const hasApplication = upcomingShifts.some(
-        (shift) =>
-          shift.shiftId === opportunity.nextShift?.id &&
-          (shift.status === 'pending' || shift.status === 'approved'),
-      );
+        const registeredOverride = shiftRegistrations[opportunity.nextShift.id];
+        const hasApplication = upcomingShifts.some(
+          (shift) =>
+            shift.shiftId === opportunity.nextShift?.id &&
+            (shift.status === 'pending' || shift.status === 'approved'),
+        );
 
       const mergedOpportunity = {
         ...opportunity,
@@ -413,8 +492,16 @@ const opportunitiesWithCounts = useMemo(
 
       return mergedOpportunity;
     }),
-  [initialOpportunities, shiftRegistrations, upcomingShifts],
-);
+    [initialOpportunities, shiftRegistrations, upcomingShifts],
+  );
+
+  const initialOrderMap = useMemo(() => {
+    const map = new Map<string, number>();
+    initialOpportunities.forEach((opportunity, index) => {
+      map.set(opportunity.id, index);
+    });
+    return map;
+  }, [initialOpportunities]);
 
   const handleToggleFavorite = useCallback(
     async (opportunityId: string, shouldFavorite: boolean) => {
@@ -508,7 +595,7 @@ const opportunitiesWithCounts = useMemo(
   const filteredOpportunities = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
 
-    return opportunitiesWithCounts.filter((opportunity) => {
+    const matches = opportunitiesWithCounts.filter((opportunity) => {
       if (
         normalizedQuery &&
         !opportunity.title.toLowerCase().includes(normalizedQuery) &&
@@ -536,7 +623,36 @@ const opportunitiesWithCounts = useMemo(
 
       return true;
     });
-  }, [opportunitiesWithCounts, searchQuery, filters]);
+
+    const sorted = [...matches];
+
+    switch (filters.sort) {
+      case 'soonest':
+        sorted.sort((a, b) => {
+          const aTime = a.nextShift ? new Date(a.nextShift.startAt).getTime() : Number.POSITIVE_INFINITY;
+          const bTime = b.nextShift ? new Date(b.nextShift.startAt).getTime() : Number.POSITIVE_INFINITY;
+          return aTime - bTime;
+        });
+        break;
+      case 'distance':
+        sorted.sort((a, b) => {
+          const aDistance = typeof a.distanceKm === 'number' ? a.distanceKm : Number.POSITIVE_INFINITY;
+          const bDistance = typeof b.distanceKm === 'number' ? b.distanceKm : Number.POSITIVE_INFINITY;
+          return aDistance - bDistance;
+        });
+        break;
+      case 'recent':
+      default:
+        sorted.sort((a, b) => {
+          const aOrder = initialOrderMap.get(a.id) ?? 0;
+          const bOrder = initialOrderMap.get(b.id) ?? 0;
+          return aOrder - bOrder;
+        });
+        break;
+    }
+
+    return sorted;
+  }, [filters, initialOrderMap, opportunitiesWithCounts, searchQuery]);
 
   const handleRequest = useCallback(
     async (opportunityId: string) => {
@@ -634,10 +750,6 @@ const opportunitiesWithCounts = useMemo(
 
       await fetchUpcomingShifts();
       await refreshShiftRegistration(emailShiftId);
-      setShiftApplications((previous) => ({
-        ...previous,
-        [emailShiftId]: true,
-      }));
 
       setEmailDialogOpen(false);
       setEmailOpportunity(null);
@@ -750,7 +862,7 @@ const opportunitiesWithCounts = useMemo(
             </div>
 
             <div className="bg-white rounded-lg border p-4 mb-6">
-              <div className="flex gap-4 mb-4">
+              <div className="flex flex-col gap-4 mb-4 lg:flex-row">
                 <div className="flex-1 relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <Input
@@ -760,7 +872,36 @@ const opportunitiesWithCounts = useMemo(
                     className="pl-10"
                   />
                 </div>
-                <FilterDrawer filters={filters} onFiltersChange={setFilters} />
+                <FilterDrawer
+                  filters={filters}
+                  onFiltersChange={setFilters}
+                  onResetFilters={handleResetFilters}
+                  categories={categories}
+                  isLoadingCategories={categoriesLoading}
+                  categoriesError={categoriesError}
+                  defaultDistance={DEFAULT_DISTANCE}
+                  isDefaultSort={filters.sort === DEFAULT_SORT}
+                />
+                <Select
+                  value={filters.sort}
+                  onValueChange={(value) =>
+                    setFilters((previous) => ({
+                      ...previous,
+                      sort: value as SortOption,
+                    }))
+                  }
+                >
+                  <SelectTrigger className="w-full sm:w-[200px]">
+                    <SelectValue placeholder="Rendezés" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sortOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -802,7 +943,10 @@ const opportunitiesWithCounts = useMemo(
 
                 <TabsContent value="map" className="mt-6">
                   <div className="h-96 rounded-lg overflow-hidden border">
-                    <Map opportunities={filteredOpportunities} onMarkerClick={handleMarkerClick} />
+                    <OpportunityMap
+                      opportunities={filteredOpportunities}
+                      onMarkerClick={handleMarkerClick}
+                    />
                   </div>
                 </TabsContent>
               </Tabs>
