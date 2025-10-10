@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { GraduationCap, Eye, EyeOff, Search, MapPin } from 'lucide-react';
+import { GraduationCap, Eye, EyeOff, Search } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -22,22 +22,11 @@ export default function StudentPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { login, register, setGuestMode } = useAuth();
+  const { login, register } = useAuth();
   const router = useRouter();
 
-  console.log('StudentPage rendered, isLoginMode:', isLoginMode);
-
   const handleContinueWithoutLogin = () => {
-    console.log('Continue without login clicked');
-    try {
-      // Set guest mode and navigate to dashboard
-      setGuestMode(true);
-      console.log('Guest mode set');
-      router.push('/student/dashboard');
-      console.log('Router push called');
-    } catch (error) {
-      console.error('Error in handleContinueWithoutLogin:', error);
-    }
+    router.push('/student/dashboard');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -48,15 +37,13 @@ export default function StudentPage() {
       const result = await login(email, password);
       if (result.success && result.user) {
         if (result.user.role === 'student') {
-          // Remove guest mode if it exists
-          localStorage.removeItem('iksz-guest-mode');
           toast.success('Sikeres bejelentkezés!');
           router.push('/student/dashboard');
         } else {
           toast.error('Ez a fiók nem diák fiók!');
         }
       } else {
-        toast.error('Hibás email vagy jelszó!');
+        toast.error(result.error ?? 'Hibás email vagy jelszó!');
       }
     } catch (error) {
       toast.error('Hiba történt a bejelentkezés során!');
@@ -90,11 +77,11 @@ export default function StudentPage() {
         grade
       });
       
-      if (result.success) {
+      if (result.success && result.user) {
         toast.success('Sikeres regisztráció!');
         router.push('/student/dashboard');
       } else {
-        toast.error('Hiba történt a regisztráció során!');
+        toast.error(result.error ?? 'Hiba történt a regisztráció során!');
       }
     } catch (error) {
       toast.error('Hiba történt a regisztráció során!');

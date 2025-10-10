@@ -42,7 +42,7 @@ export default function LoginPage() {
             router.push('/');
         }
       } else {
-        toast.error('Hibás email vagy jelszó!');
+        toast.error(result.error ?? 'Hibás email vagy jelszó!');
       }
     } catch (error) {
       toast.error('Hiba történt a bejelentkezés során!');

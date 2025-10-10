@@ -143,7 +143,7 @@ export default function Map({
       content: '<div style="padding: 8px;"><strong>Az Ön helyzete</strong></div>'
     });
 
-    const userClickListener = userMarker.addListener('click', () => {
+    userMarker.addListener('click', () => {
       // Close other info windows
       infoWindowsRef.current.forEach(iw => iw.close());
       userInfoWindow.open(map, userMarker);
@@ -158,53 +158,72 @@ export default function Map({
         id: 'demo-1',
         title: 'Városliget - Környezetvédelem',
         location: { address: 'Városliget, Budapest', lat: 47.5186, lng: 19.0823 },
-        date: '2024-02-15',
-        duration: 4,
-        capacity: 20,
-        registered: 12
+        nextShift: {
+          startAt: '2024-02-15T09:00:00+01:00',
+          endAt: '2024-02-15T13:00:00+01:00',
+          hoursAwarded: 4,
+          capacity: 20,
+          registeredCount: 12
+        }
       },
       {
         id: 'demo-2',
         title: 'Margit körút - Idősek segítése',
         location: { address: 'Margit körút 45, Budapest', lat: 47.5125, lng: 19.0364 },
-        date: '2024-02-18',
-        duration: 3,
-        capacity: 8,
-        registered: 5
+        nextShift: {
+          startAt: '2024-02-18T14:00:00+01:00',
+          endAt: '2024-02-18T17:00:00+01:00',
+          hoursAwarded: 3,
+          capacity: 8,
+          registeredCount: 5
+        }
       },
       {
         id: 'demo-3',
         title: 'Üllői út - Állatvédelem',
         location: { address: 'Üllői út 200, Budapest', lat: 47.4563, lng: 19.1234 },
-        date: '2024-02-20',
-        duration: 5,
-        capacity: 15,
-        registered: 8
+        nextShift: {
+          startAt: '2024-02-20T10:00:00+01:00',
+          endAt: '2024-02-20T15:00:00+01:00',
+          hoursAwarded: 5,
+          capacity: 15,
+          registeredCount: 8
+        }
       },
       {
         id: 'demo-4',
         title: 'Váci út - Gyermekek',
         location: { address: 'Váci út 150, Budapest', lat: 47.5567, lng: 19.0678 },
-        date: '2024-02-22',
-        duration: 3,
-        capacity: 6,
-        registered: 4
+        nextShift: {
+          startAt: '2024-02-22T15:00:00+01:00',
+          endAt: '2024-02-22T18:00:00+01:00',
+          hoursAwarded: 3,
+          capacity: 6,
+          registeredCount: 4
+        }
       },
       {
         id: 'demo-5',
         title: 'Keleti pályaudvar - Szociális',
         location: { address: 'Keleti pályaudvar, Budapest', lat: 47.5000, lng: 19.0833 },
-        date: '2024-02-25',
-        duration: 4,
-        capacity: 12,
-        registered: 9
+        nextShift: {
+          startAt: '2024-02-25T18:00:00+01:00',
+          endAt: '2024-02-25T22:00:00+01:00',
+          hoursAwarded: 4,
+          capacity: 12,
+          registeredCount: 9
+        }
       }
     ];
 
     opportunitiesToShow.forEach((opportunity) => {
       if (opportunity.location?.lat && opportunity.location?.lng) {
-        const availableSpots = opportunity.capacity - opportunity.registered;
-        const markerColor = availableSpots > 5 ? '#10b981' : availableSpots > 0 ? '#f59e0b' : '#ef4444';
+        const shift = opportunity.nextShift;
+        const capacity = shift && typeof shift.capacity === 'number' ? shift.capacity : null;
+        const registered = shift && typeof shift.registeredCount === 'number' ? shift.registeredCount : 0;
+        const availableSpots = capacity !== null ? capacity - registered : null;
+        const markerColor =
+          availableSpots === null ? '#3b82f6' : availableSpots > 5 ? '#10b981' : availableSpots > 0 ? '#f59e0b' : '#ef4444';
         
         const marker = new google.maps.Marker({
           position: { lat: opportunity.location.lat, lng: opportunity.location.lng },
@@ -220,7 +239,44 @@ export default function Map({
           }
         });
 
-        const statusText = availableSpots > 0 ? `${availableSpots} hely maradt` : 'Betelt';
+        const statusText =
+          availableSpots === null
+            ? 'Elérhetőség egyeztetés alatt'
+            : availableSpots > 0
+            ? `${availableSpots} hely maradt`
+            : 'Betelt';
+
+        const shiftDate = shift?.startAt
+          ? new Intl.DateTimeFormat('hu-HU', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            }).format(new Date(shift.startAt))
+          : 'Időpont egyeztetés alatt';
+
+        const shiftTime = shift?.startAt
+          ? new Intl.DateTimeFormat('hu-HU', {
+              hour: '2-digit',
+              minute: '2-digit',
+            }).format(new Date(shift.startAt))
+          : '—';
+
+        const durationHours =
+          shift && typeof shift.hoursAwarded === 'number'
+            ? shift.hoursAwarded
+            : shift?.startAt && shift?.endAt
+            ? Number(
+                (
+                  (new Date(shift.endAt).getTime() - new Date(shift.startAt).getTime()) /
+                  (1000 * 60 * 60)
+                ).toFixed(1),
+              )
+            : null;
+
+        const durationText =
+          durationHours !== null
+            ? `${Number.isInteger(durationHours) ? durationHours.toFixed(0) : durationHours.toFixed(1)}h`
+            : '—';
         
         const infoWindow = new google.maps.InfoWindow({
           content: `
@@ -232,7 +288,7 @@ export default function Map({
               </p>
               <p style="font-size: 14px; color: #3b82f6; margin: 0 0 6px 0; display: flex; align-items: center;">
                 <span style="margin-right: 6px;">📅</span>
-                ${opportunity.date} • ${opportunity.duration}h
+                ${shiftDate} • ${shiftTime} • ${durationText}
               </p>
               <p style="font-size: 14px; color: ${markerColor}; margin: 0; font-weight: 500; display: flex; align-items: center;">
                 <span style="margin-right: 6px;">👥</span>
@@ -271,7 +327,7 @@ export default function Map({
             <ol className="text-xs text-blue-700 space-y-1">
               <li>1. Menj a <a href="https://console.cloud.google.com" target="_blank" className="underline">Google Cloud Console</a>-ra</li>
               <li>2. Hozz létre egy új projektet vagy válassz egy meglévőt</li>
-              <li>3. Engedélyezd a "Maps JavaScript API"-t</li>
+              <li>3. Engedélyezd a &quot;Maps JavaScript API&quot;-t</li>
               <li>4. Hozz létre egy API kulcsot</li>
               <li>5. Add hozzá a .env.local fájlhoz</li>
             </ol>
