@@ -10,7 +10,7 @@ export default function Home() {
       <header className="absolute top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
         <div className="container mx-auto px-6 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-linear-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
               <GraduationCap className="w-6 h-6 text-white" />
             </div>
             <h1 className="text-xl font-bold text-gray-900">IKSZ Finder</h1>
@@ -34,7 +34,7 @@ export default function Home() {
             
             <h2 className="text-6xl md:text-7xl font-bold text-gray-900 mb-8 leading-tight">
               Teljesítsd az
-              <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent block">
+              <span className="bg-linear-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent block">
                 IKSZ óráidat
               </span>
               egyszerűen
@@ -47,7 +47,7 @@ export default function Home() {
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
               <Link href="/student">
-                <Button size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 text-lg rounded-xl shadow-lg hover:shadow-xl transition-all">
+                <Button size="lg" className="bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 text-lg rounded-xl shadow-lg hover:shadow-xl transition-all">
                   Kezdés diákként
                   <ArrowRight className="w-5 h-5 ml-2" />
                 </Button>
@@ -94,7 +94,7 @@ export default function Home() {
             {/* Students */}
             <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-white">
               <CardContent className="p-8">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mb-6">
+                <div className="w-16 h-16 bg-linear-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mb-6">
                   <GraduationCap className="w-8 h-8 text-white" />
                 </div>
                 <h4 className="text-2xl font-bold text-gray-900 mb-4">Diákoknak</h4>
@@ -121,7 +121,7 @@ export default function Home() {
             {/* Providers */}
             <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-white">
               <CardContent className="p-8">
-                <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center mb-6">
+                <div className="w-16 h-16 bg-linear-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center mb-6">
                   <Building2 className="w-8 h-8 text-white" />
                 </div>
                 <h4 className="text-2xl font-bold text-gray-900 mb-4">Szervezőknek</h4>
@@ -148,7 +148,7 @@ export default function Home() {
             {/* Teachers */}
             <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-white">
               <CardContent className="p-8">
-                <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center mb-6">
+                <div className="w-16 h-16 bg-linear-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center mb-6">
                   <UserCheck className="w-8 h-8 text-white" />
                 </div>
                 <h4 className="text-2xl font-bold text-gray-900 mb-4">Tanároknak</h4>
@@ -176,7 +176,7 @@ export default function Home() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 bg-gradient-to-br from-blue-600 via-purple-600 to-blue-700">
+      <section className="py-20 bg-linear-to-br from-blue-600 via-purple-600 to-blue-700">
         <div className="container mx-auto px-6 text-center max-w-4xl">
           <h3 className="text-4xl md:text-5xl font-bold text-white mb-6">
             Kezdd el még ma!
@@ -197,7 +197,7 @@ export default function Home() {
       <footer className="bg-gray-900 text-white py-12">
         <div className="container mx-auto px-6 text-center">
           <div className="flex items-center justify-center gap-3 mb-6">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-linear-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
               <GraduationCap className="w-5 h-5 text-white" />
             </div>
             <span className="text-xl font-bold">IKSZ Finder</span>

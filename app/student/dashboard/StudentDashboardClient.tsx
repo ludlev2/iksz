@@ -841,7 +841,7 @@ export default function StudentDashboardClient({ initialOpportunities }: Student
           )}
 
           <div className={isGuestView ? 'lg:col-span-1' : 'lg:col-span-3'}>
-            <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg p-6 mb-6 text-white">
+            <div className="bg-linear-to-r from-blue-600 to-blue-700 rounded-lg p-6 mb-6 text-white">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-lg font-semibold mb-2">Kell segítség a szerződéshez? 📋</h3>
@@ -1015,7 +1015,7 @@ function EmailDialog({
           <div className="space-y-1">
             <label className="text-sm font-medium text-gray-700">Üzenet</label>
             <textarea
-              className="w-full min-h-[180px] rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full min-h-[180px] rounded-lg border px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               value={emailBody}
               onChange={(event) => onEmailBodyChange(event.target.value)}
             />

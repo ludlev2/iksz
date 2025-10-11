@@ -107,7 +107,7 @@ export default function FilterDrawer({
           return (
             <Badge
               key={category.id}
-              variant={isActive ? 'default' : 'outline'}
+              variant={isActive ? 'default' : 'outline-solid'}
               className={`cursor-pointer ${
                 isActive ? colorClass : 'hover:bg-gray-100'
               }`}

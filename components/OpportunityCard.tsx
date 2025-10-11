@@ -136,7 +136,7 @@ export default function OpportunityCard({
   const buttonLabel =
     signupDisabled && baseButtonLabel === 'Jelentkezem' ? 'Jelentkezés...' : baseButtonLabel;
   const favoriteLabel = isFavorite ? 'Eltávolítás' : 'Mentés';
-  const favoriteVariant = isFavorite ? 'secondary' : 'outline';
+  const favoriteVariant = isFavorite ? 'secondary' : 'outline-solid';
   const actionLayoutClass = onToggleFavorite
     ? 'pt-2 grid gap-2 sm:grid-cols-3'
     : 'pt-2 grid gap-2 sm:grid-cols-2';
