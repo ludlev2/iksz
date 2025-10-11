@@ -89,6 +89,7 @@ type AugmentedOpportunity = Opportunity & {
 };
 
 const DEFAULT_DISTANCE = 10;
+const DEFAULT_MAP_CENTER = { lat: 47.4979, lng: 19.0402 } as const;
 const DEFAULT_SORT: SortOption = 'recent';
 
 const createDefaultFilters = (): Filters => ({
@@ -135,6 +136,8 @@ export default function StudentDashboardClient({ initialOpportunities }: Student
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
 
+  const [locationRequested, setLocationRequested] = useState(false);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('list');
   const [filters, setFilters] = useState<Filters>(() => createDefaultFilters());
@@ -159,6 +162,38 @@ export default function StudentDashboardClient({ initialOpportunities }: Student
   const handleResetFilters = useCallback(() => {
     setFilters(createDefaultFilters());
   }, []);
+
+  const requestUserLocation = useCallback(() => {
+    if (locationRequested) {
+      return;
+    }
+
+    setLocationRequested(true);
+
+    if (!navigator.geolocation) {
+      toast.info('A böngésző nem támogatja a helymeghatározást.');
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setUserLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+      },
+      (error) => {
+        if (error.code !== error.PERMISSION_DENIED) {
+          toast.error('Nem sikerült lekérni a helyzeted.');
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 7000,
+        maximumAge: 60_000,
+      },
+    );
+  }, [locationRequested]);
 
   const handleEmailDialogOpenChange = useCallback((open: boolean) => {
     setEmailDialogOpen(open);
@@ -654,6 +689,22 @@ export default function StudentDashboardClient({ initialOpportunities }: Student
     return sorted;
   }, [filters, initialOrderMap, opportunitiesWithCounts, searchQuery]);
 
+  const mapCenter = useMemo(() => {
+    if (userLocation) {
+      return userLocation;
+    }
+
+    for (const opportunity of filteredOpportunities) {
+      const lat = opportunity.location?.lat;
+      const lng = opportunity.location?.lng;
+      if (typeof lat === 'number' && typeof lng === 'number') {
+        return { lat, lng };
+      }
+    }
+
+    return DEFAULT_MAP_CENTER;
+  }, [filteredOpportunities, userLocation]);
+
   const handleRequest = useCallback(
     async (opportunityId: string) => {
       if (!user) {
@@ -770,6 +821,26 @@ export default function StudentDashboardClient({ initialOpportunities }: Student
   const handleViewDetails = (opportunityId: string) => {
     router.push(`/opportunity/${opportunityId}`);
   };
+
+  useEffect(() => {
+    if (activeTab === 'map') {
+      requestUserLocation();
+    }
+  }, [activeTab, requestUserLocation]);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'production') {
+      (window as unknown as Record<string, unknown>).__IKSZ_OPPORTUNITIES = opportunitiesWithCounts.map(
+        (opportunity) => ({
+          id: opportunity.id,
+          title: opportunity.title,
+          lat: opportunity.location?.lat ?? null,
+          lng: opportunity.location?.lng ?? null,
+          category: opportunity.category,
+        }),
+      );
+    }
+  }, [opportunitiesWithCounts]);
 
   if (authLoading) {
     return <div className="p-6">Betöltés...</div>;
@@ -944,7 +1015,9 @@ export default function StudentDashboardClient({ initialOpportunities }: Student
                 <TabsContent value="map" className="mt-6">
                   <div className="h-96 rounded-lg overflow-hidden border">
                     <OpportunityMap
+                      center={mapCenter}
                       opportunities={filteredOpportunities}
+                      userLocation={userLocation}
                       onMarkerClick={handleMarkerClick}
                     />
                   </div>
