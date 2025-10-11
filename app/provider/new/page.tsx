@@ -162,7 +162,7 @@ export default function NewOpportunityPage() {
                   {categories.map((category) => (
                     <Badge
                       key={category.id}
-                      variant={formData.categories.includes(category.id) ? "default" : "outline"}
+                      variant={formData.categories.includes(category.id) ? "default" : "outline-solid"}
                       className={`cursor-pointer ${
                         formData.categories.includes(category.id) 
                           ? category.color 

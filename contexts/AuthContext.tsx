@@ -1,18 +1,37 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from 'react';
+import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
+import { useRouter } from 'next/navigation';
 
-interface User {
+import { createClient } from '@/utils/supabase/client';
+
+const DEFAULT_TARGET_HOURS = 50;
+
+type UserRole = 'student' | 'provider' | 'teacher' | 'admin';
+
+interface AuthUser {
   id: string;
-  email: string;
-  role: 'student' | 'provider' | 'teacher';
+  email: string | null;
+  role: UserRole;
   name: string;
-  [key: string]: any;
+  school: string | null;
+  grade: number | null;
+  targetHours: number;
+  completedHours: number;
+  pendingHours: number;
 }
 
 interface LoginResult {
   success: boolean;
-  user?: User;
+  user?: AuthUser;
+  error?: string;
 }
 
 interface RegisterData {
@@ -24,106 +43,468 @@ interface RegisterData {
 }
 
 interface AuthContextType {
-  user: User | null;
+  user: AuthUser | null;
   login: (email: string, password: string) => Promise<LoginResult>;
   register: (data: RegisterData) => Promise<LoginResult>;
-  logout: () => void;
-  setGuestMode: (enabled: boolean) => void;
+  logout: () => Promise<void>;
+  session: Session | null;
   isLoading: boolean;
-  isGuestMode: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isGuestMode, setIsGuestMode] = useState(false);
+const mapProfileRole = (role: string | null | undefined): UserRole => {
+  switch (role) {
+    case 'teacher':
+      return 'teacher';
+    case 'organization_admin':
+      return 'provider';
+    case 'admin':
+      return 'admin';
+    default:
+      return 'student';
+  }
+};
+
+const toHours = (value: number | string | null): number => {
+  if (typeof value === 'number') {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const parsed = Number.parseFloat(value);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+
+  return 0;
+};
+
+const getSchoolFromPreferences = (preferences: unknown): string | null => {
+  if (!preferences || typeof preferences !== 'object') {
+    return null;
+  }
+
+  const record = preferences as Record<string, unknown>;
+  if (typeof record.schoolName === 'string') {
+    return record.schoolName;
+  }
+
+  if (typeof record.school === 'string') {
+    return record.school;
+  }
+
+  return null;
+};
+
+export function AuthProvider({
+  children,
+  initialSession,
+}: {
+  children: React.ReactNode;
+  initialSession: Session | null;
+}) {
+  const [supabase] = useState(() => createClient());
+  const router = useRouter();
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [session, setSession] = useState<Session | null>(initialSession);
+  const [isSessionLoading, setIsSessionLoading] = useState(!initialSession);
+  const [isProfileLoading, setIsProfileLoading] = useState(false);
+
+  const fetchHourAggregates = useCallback(
+    async (profileId: string) => {
+      const { data, error } = await supabase
+        .from('hour_logs')
+        .select('status, duration_hours')
+        .eq('student_id', profileId);
+
+      if (error) {
+        console.error('Error loading hour logs:', error);
+        return { completedHours: 0, pendingHours: 0 };
+      }
+
+      const logs =
+        (data as Array<{
+          status: string | null;
+          duration_hours: number | string | null;
+        }>) ?? [];
+
+      return logs.reduce(
+        (accumulator, entry) => {
+          const duration = toHours(entry.duration_hours);
+          if (entry.status === 'approved') {
+            accumulator.completedHours += duration;
+          } else if (entry.status === 'submitted') {
+            accumulator.pendingHours += duration;
+          }
+          return accumulator;
+        },
+        { completedHours: 0, pendingHours: 0 },
+      );
+    },
+    [supabase],
+  );
+
+  const hydrateUser = useCallback(
+    async (supabaseUser: SupabaseUser): Promise<AuthUser | null> => {
+      const { data: existingProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, role, full_name')
+        .eq('id', supabaseUser.id)
+        .maybeSingle();
+
+      if (profileError) {
+        console.error('Error loading profile:', profileError);
+        return null;
+      }
+
+      let profileRecord = existingProfile;
+
+      if (!profileRecord) {
+        const { data: createdProfile, error: createProfileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: supabaseUser.id,
+            role: 'student',
+            full_name: supabaseUser.email ?? 'IKSZ diák',
+          })
+          .select('id, role, full_name')
+          .maybeSingle();
+
+        if (createProfileError) {
+          console.error('Error creating profile:', createProfileError);
+          return null;
+        }
+
+        profileRecord = createdProfile ?? null;
+      }
+
+      if (!profileRecord) {
+        return null;
+      }
+
+      const mappedRole = mapProfileRole(profileRecord.role);
+
+      if (mappedRole !== 'student') {
+        return {
+          id: profileRecord.id,
+          email: supabaseUser.email ?? null,
+          role: mappedRole,
+          name: profileRecord.full_name ?? supabaseUser.email ?? 'Felhasználó',
+          school: null,
+          grade: null,
+          targetHours: DEFAULT_TARGET_HOURS,
+          completedHours: 0,
+          pendingHours: 0,
+        };
+      }
+
+      const {
+        data: studentProfile,
+        error: studentProfileError,
+      } = await supabase
+        .from('student_profiles')
+        .select('grade, target_hours, preferences')
+        .eq('profile_id', profileRecord.id)
+        .maybeSingle();
+
+      if (studentProfileError) {
+        console.error('Error loading student profile:', studentProfileError);
+      }
+
+      let resolvedStudentProfile = studentProfile ?? null;
+
+      if (!resolvedStudentProfile) {
+        const {
+          data: createdStudentProfile,
+          error: createStudentProfileError,
+        } = await supabase
+          .from('student_profiles')
+          .insert({
+            profile_id: profileRecord.id,
+            target_hours: DEFAULT_TARGET_HOURS,
+          })
+          .select('grade, target_hours, preferences')
+          .maybeSingle();
+
+        if (createStudentProfileError) {
+          console.error('Error creating student profile:', createStudentProfileError);
+        } else {
+          resolvedStudentProfile = createdStudentProfile ?? null;
+        }
+      }
+
+      const hourTotals = await fetchHourAggregates(profileRecord.id);
+
+      return {
+        id: profileRecord.id,
+        email: supabaseUser.email ?? null,
+        role: mappedRole,
+        name: profileRecord.full_name ?? supabaseUser.email ?? 'Felhasználó',
+        school: getSchoolFromPreferences(resolvedStudentProfile?.preferences ?? null),
+        grade: resolvedStudentProfile?.grade ?? null,
+        targetHours: resolvedStudentProfile?.target_hours ?? DEFAULT_TARGET_HOURS,
+        completedHours: hourTotals.completedHours,
+        pendingHours: hourTotals.pendingHours,
+      };
+    },
+    [fetchHourAggregates, supabase],
+  );
 
   useEffect(() => {
-    // Check for stored auth on mount
-    const storedUser = localStorage.getItem('iksz-user');
-    const guestMode = localStorage.getItem('iksz-guest-mode');
-    
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    } else if (guestMode === 'true') {
-      setIsGuestMode(true);
-    }
-    setIsLoading(false);
-  }, []);
+    let isMounted = true;
 
-  const login = async (email: string, password: string): Promise<LoginResult> => {
-    try {
-      // Mock authentication - in real app this would be an API call
-      const response = await fetch('/data/mock-users.json');
-      const users = await response.json();
-      
-      const foundUser = users.find((u: any) => 
-        u.email === email && u.password === password
-      );
+    const loadSession = async () => {
+      setIsSessionLoading(true);
 
-      if (foundUser) {
-        const { password: _, ...userWithoutPassword } = foundUser;
-        setUser(userWithoutPassword);
-        setIsGuestMode(false);
-        localStorage.setItem('iksz-user', JSON.stringify(userWithoutPassword));
-        localStorage.removeItem('iksz-guest-mode');
-        return { success: true, user: userWithoutPassword };
+      try {
+        const { data, error } = await supabase.auth.getSession();
+
+        if (!isMounted) {
+          return;
+        }
+
+        if (error) {
+          console.error('Error fetching session:', error);
+          setSession(null);
+          return;
+        }
+
+        setSession(data.session ?? null);
+        if (data.session?.access_token && data.session?.refresh_token) {
+          try {
+            await fetch('/auth/session', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                event: 'INITIAL_SESSION',
+                session: {
+                  access_token: data.session.access_token,
+                  refresh_token: data.session.refresh_token,
+                },
+              }),
+            });
+          } catch (error) {
+            console.error('Error syncing initial session:', error);
+          }
+        }
+      } catch (error) {
+        console.error('Unexpected error during session fetch:', error);
+        if (isMounted) {
+          setSession(null);
+        }
+      } finally {
+        if (isMounted) {
+          setIsSessionLoading(false);
+        }
       }
-      return { success: false };
-    } catch (error) {
-      console.error('Login error:', error);
-      return { success: false };
-    }
-  };
+    };
 
-  const register = async (data: RegisterData): Promise<LoginResult> => {
-    try {
-      // In a real app, this would be an API call to register the user
-      // For now, we'll create a new user and store it
-      const newUser: User = {
-        id: Date.now().toString(),
+    loadSession();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, nextSession) => {
+      if (!isMounted) {
+        return;
+      }
+
+      setSession(nextSession);
+      setIsSessionLoading(false);
+
+       try {
+        await fetch('/auth/session', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            event,
+            session: nextSession
+              ? {
+                  access_token: nextSession.access_token,
+                  refresh_token: nextSession.refresh_token,
+                }
+              : null,
+          }),
+        });
+      } catch (error) {
+        console.error('Error syncing auth change:', error);
+      }
+
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+        router.refresh();
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, [router, supabase]);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    const hydrate = async () => {
+      if (!session?.user) {
+        setUser(null);
+        return;
+      }
+
+      setIsProfileLoading(true);
+      try {
+        const hydrated = await hydrateUser(session.user);
+        if (!isCancelled) {
+          setUser(hydrated);
+        }
+      } catch (error) {
+        console.error('Error hydrating user profile:', error);
+        if (!isCancelled) {
+          setUser(null);
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsProfileLoading(false);
+        }
+      }
+    };
+
+    hydrate();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [hydrateUser, session]);
+
+  const isLoading = isSessionLoading || isProfileLoading;
+
+  const login = useCallback(
+    async (email: string, password: string): Promise<LoginResult> => {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        console.error('Login error:', error);
+        return { success: false, error: error.message };
+      }
+
+      const authUser = data.user;
+
+      if (!authUser) {
+        return {
+          success: false,
+          error: 'A felhasználói adatok nem elérhetők a bejelentkezéshez.',
+        };
+      }
+
+      const hydrated = await hydrateUser(authUser);
+
+      if (!hydrated) {
+        return {
+          success: false,
+          error: 'Nem sikerült betölteni a felhasználói profilt.',
+        };
+      }
+
+      setUser(hydrated);
+      return { success: true, user: hydrated };
+    },
+    [hydrateUser, supabase],
+  );
+
+  const register = useCallback(
+    async (data: RegisterData): Promise<LoginResult> => {
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: data.email,
+        password: data.password,
+        options: {
+          data: {
+            full_name: data.name,
+          },
+        },
+      });
+
+      if (signUpError) {
+        console.error('Registration error:', signUpError);
+        return { success: false, error: signUpError.message };
+      }
+
+      const authUser = signUpData.user;
+
+      if (!authUser) {
+        return {
+          success: false,
+          error:
+            'A regisztráció sikeres volt, de nem kaptunk vissza felhasználói adatokat. Kérlek ellenőrizd az emailed.',
+        };
+      }
+
+      const { error: profileError } = await supabase.from('profiles').upsert({
+        id: authUser.id,
         role: 'student',
-        name: data.name,
-        school: data.school,
-        grade: data.grade,
-        completedHours: 0,
-        pendingHours: 0
-      };
-      
-      // Store the user
-      setUser(newUser);
-      setIsGuestMode(false);
-      localStorage.setItem('iksz-user', JSON.stringify(newUser));
-      localStorage.removeItem('iksz-guest-mode');
-      
-      return { success: true, user: newUser };
-    } catch (error) {
-      console.error('Registration error:', error);
-      return { success: false };
-    }
-  };
+        full_name: data.name,
+      });
 
-  const logout = () => {
+      if (profileError) {
+        console.error('Profile upsert error:', profileError);
+        return { success: false, error: profileError.message };
+      }
+
+      const parsedGrade = Number.parseInt(data.grade, 10);
+      const preferences = data.school ? { schoolName: data.school } : null;
+
+      const { error: studentProfileError } = await supabase
+        .from('student_profiles')
+        .upsert({
+          profile_id: authUser.id,
+          grade: Number.isNaN(parsedGrade) ? null : parsedGrade,
+          target_hours: DEFAULT_TARGET_HOURS,
+          preferences,
+        });
+
+      if (studentProfileError) {
+        console.error('Student profile upsert error:', studentProfileError);
+        return { success: false, error: studentProfileError.message };
+      }
+
+      const hydrated = await hydrateUser(authUser);
+
+      if (!hydrated) {
+        return {
+          success: true,
+        };
+      }
+
+      setUser(hydrated);
+      return { success: true, user: hydrated };
+    },
+    [hydrateUser, supabase],
+  );
+
+  const logout = useCallback(async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error('Logout error:', error);
+    }
     setUser(null);
-    setIsGuestMode(false);
-    localStorage.removeItem('iksz-user');
-    localStorage.removeItem('iksz-guest-mode');
-  };
-
-  const setGuestModeHandler = (enabled: boolean) => {
-    setIsGuestMode(enabled);
-    if (enabled) {
-      localStorage.setItem('iksz-guest-mode', 'true');
-    } else {
-      localStorage.removeItem('iksz-guest-mode');
-    }
-  };
+    setSession(null);
+  }, [supabase]);
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, setGuestMode: setGuestModeHandler, isLoading, isGuestMode }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        login,
+        register,
+        logout,
+        session,
+        isLoading,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

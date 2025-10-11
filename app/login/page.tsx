@@ -38,11 +38,14 @@ export default function LoginPage() {
           case 'teacher':
             router.push('/teacher/admin');
             break;
+          case 'admin':
+            router.push('/admin/submissions');
+            break;
           default:
             router.push('/');
         }
       } else {
-        toast.error('Hibás email vagy jelszó!');
+        toast.error(result.error ?? 'Hibás email vagy jelszó!');
       }
     } catch (error) {
       toast.error('Hiba történt a bejelentkezés során!');
@@ -52,7 +55,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-blue-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-linear-to-br from-blue-50 via-green-50 to-blue-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
