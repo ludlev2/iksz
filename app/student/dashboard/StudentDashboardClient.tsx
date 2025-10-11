@@ -785,15 +785,50 @@ export default function StudentDashboardClient({ initialOpportunities }: Student
     setSignupLoadingId(emailOpportunity.id);
 
     try {
-      const { error } = await supabase.from('student_applications').insert({
-        student_id: user.id,
-        shift_id: emailShiftId,
-        status: 'pending',
-      });
+      const { data: inserted, error } = await supabase
+        .from('student_applications')
+        .insert({
+          student_id: user.id,
+          shift_id: emailShiftId,
+          status: 'pending',
+        })
+        .select('id')
+        .maybeSingle();
 
       if (error) {
         if (error.code === '23505') {
-          toast.info('Már jelentkeztél erre a műszakra.');
+          const { data: existing, error: fetchError } = await supabase
+            .from('student_applications')
+            .select('id, status')
+            .eq('student_id', user.id)
+            .eq('shift_id', emailShiftId)
+            .maybeSingle();
+
+          if (fetchError) {
+            throw fetchError;
+          }
+
+          if (existing) {
+            if (existing.status === 'cancelled') {
+              const { error: updateError } = await supabase
+                .from('student_applications')
+                .update({
+                  status: 'pending',
+                  submitted_at: new Date().toISOString(),
+                })
+                .eq('id', existing.id);
+
+              if (updateError) {
+                throw updateError;
+              }
+
+              toast.success('Jelentkezés újra aktiválva!', {
+                description: 'Értesítjük a szervezőt, hogy ismét számíthat rád.',
+              });
+            } else {
+              toast.info('Már jelentkeztél erre a műszakra.');
+            }
+          }
         } else {
           throw error;
         }
@@ -801,6 +836,7 @@ export default function StudentDashboardClient({ initialOpportunities }: Student
         toast.success('Jelentkezés elküldve!', {
           description: 'A szervező hamarosan felveszi veled a kapcsolatot.',
         });
+
       }
 
       await fetchUpcomingShifts();

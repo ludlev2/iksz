@@ -136,14 +136,18 @@ export default function OpportunityDetailClient({ opportunity }: OpportunityDeta
 
       const { data, error } = await supabase
         .from('student_applications')
-        .select('id')
+        .select('id, status')
         .eq('student_id', user.id)
         .eq('shift_id', nextShift.id)
+        .in('status', ['pending', 'approved'])
         .maybeSingle();
 
       if (!error && data) {
         setHasRequested(true);
         setApplicationId(data.id);
+      } else {
+        setHasRequested(false);
+        setApplicationId(null);
       }
     };
 
@@ -239,17 +243,36 @@ export default function OpportunityDetailClient({ opportunity }: OpportunityDeta
 
       if (error) {
         if (error.code === '23505') {
-          toast.info('Már jelentkeztél erre a műszakra.');
-          const { data: existing } = await supabase
+          const { data: existing, error: fetchError } = await supabase
             .from('student_applications')
-            .select('id')
+            .select('id, status')
             .eq('student_id', user.id)
             .eq('shift_id', emailShiftId)
             .maybeSingle();
+
+          if (fetchError) {
+            throw fetchError;
+          }
+
           if (existing) {
+            if (existing.status === 'cancelled') {
+              const { error: updateError } = await supabase
+                .from('student_applications')
+                .update({ status: 'pending', submitted_at: new Date().toISOString() })
+                .eq('id', existing.id);
+
+              if (updateError) {
+                throw updateError;
+              }
+
+              toast.success('Jelentkezés újra aktiválva!');
+            } else {
+              toast.info('Már jelentkeztél erre a műszakra.');
+            }
+
+            setHasRequested(true);
             setApplicationId(existing.id);
           }
-          setHasRequested(true);
         } else {
           throw error;
         }

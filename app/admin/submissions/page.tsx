@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 
@@ -89,6 +90,7 @@ const slugify = (value: string) =>
 export default function ModerationDashboardPage() {
   const { user, isLoading } = useAuth();
   const supabase = useMemo(() => createClient(), []);
+  const router = useRouter();
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -459,11 +461,16 @@ export default function ModerationDashboardPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-12">
       <div className="container mx-auto max-w-6xl space-y-6 px-4">
-        <div>
-          <h1 className="text-3xl font-semibold text-slate-900">Beküldött feladatok</h1>
-          <p className="mt-2 text-sm text-slate-500">
-            Átnézésre váró és korábban ellenőrzött lehetőségek. Jóváhagyás után a feladat automatikusan megjelenik a diákok számára.
-          </p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-semibold text-slate-900">Beküldött feladatok</h1>
+            <p className="mt-2 text-sm text-slate-500">
+              Átnézésre váró és korábban ellenőrzött lehetőségek. Jóváhagyás után a feladat automatikusan megjelenik a diákok számára.
+            </p>
+          </div>
+          <Button variant="outline" onClick={() => router.push('/student/dashboard')}>
+            Vissza a diák nézethez
+          </Button>
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

@@ -36,11 +36,18 @@ export default function StudentPage() {
     try {
       const result = await login(email, password);
       if (result.success && result.user) {
-        if (result.user.role === 'student') {
-          toast.success('Sikeres bejelentkezés!');
-          router.push('/student/dashboard');
-        } else {
-          toast.error('Ez a fiók nem diák fiók!');
+        switch (result.user.role) {
+          case 'student':
+            toast.success('Sikeres bejelentkezés!');
+            router.push('/student/dashboard');
+            break;
+          case 'admin':
+            toast.success('Admin bejelentkezés sikeres!');
+            router.push('/admin/submissions');
+            break;
+          default:
+            toast.error('Ez a fiók nem diák fiók!');
+            break;
         }
       } else {
         toast.error(result.error ?? 'Hibás email vagy jelszó!');

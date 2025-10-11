@@ -38,6 +38,9 @@ export default function LoginPage() {
           case 'teacher':
             router.push('/teacher/admin');
             break;
+          case 'admin':
+            router.push('/admin/submissions');
+            break;
           default:
             router.push('/');
         }
