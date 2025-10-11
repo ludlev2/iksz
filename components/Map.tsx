@@ -1,304 +1,453 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { MarkerClusterer } from '@googlemaps/markerclusterer';
 
-interface MapProps {
-  opportunities: any[];
-  center?: [number, number];
-  zoom?: number;
-  onMarkerClick?: (opportunityId: string) => void;
+type LatLngLiteral = {
+  lat: number;
+  lng: number;
+};
+
+const DEFAULT_CENTER: LatLngLiteral = {
+  lat: 47.4979,
+  lng: 19.0402,
+};
+
+interface MapShift {
+  startAt?: string;
+  hoursAwarded?: number | null;
+  capacity?: number | null;
+  registeredCount?: number | null;
 }
 
-export default function Map({ 
-  opportunities, 
-  center = [47.4979, 19.0402], // Budapest center
+interface MapOpportunity {
+  id: string;
+  title: string;
+  location: {
+    address: string;
+    lat?: number | null;
+    lng?: number | null;
+  };
+  categoryLabel?: string;
+  nextShift?: MapShift;
+}
+
+interface MapProps {
+  opportunities: MapOpportunity[];
+  center?: LatLngLiteral;
+  zoom?: number;
+  onMarkerClick?: (opportunityId: string) => void;
+  userLocation?: LatLngLiteral | null;
+  favoriteIds?: string[];
+}
+
+let loadPromise: Promise<void> | null = null;
+
+const loadGoogleMapsApi = (apiKey: string) => {
+  if (typeof window === 'undefined') {
+    return Promise.reject(new Error('A Google Maps csak böngészőben tölthető be.'));
+  }
+
+  if (window.google?.maps?.importLibrary) {
+    return Promise.resolve();
+  }
+
+  if (loadPromise) {
+    return loadPromise;
+  }
+
+  loadPromise = new Promise<void>((resolve, reject) => {
+    const script = document.createElement('script');
+    const params = new URLSearchParams({
+      key: apiKey,
+      v: 'weekly',
+      libraries: 'places',
+    });
+
+    script.src = `https://maps.googleapis.com/maps/api/js?${params.toString()}`;
+    script.async = true;
+    script.defer = true;
+    script.addEventListener('load', () => {
+      if (window.google?.maps?.importLibrary) {
+        resolve();
+      } else {
+        loadPromise = null;
+        script.remove();
+        reject(new Error('A google.maps.importLibrary nem érhető el a betöltés után.'));
+      }
+    });
+    script.addEventListener('error', () => {
+      loadPromise = null;
+      script.remove();
+      reject(new Error('Nem sikerült betölteni a Google Maps JavaScript API-t.'));
+    });
+
+    const existingScriptWithNonce = document.querySelector<HTMLScriptElement>('script[nonce]');
+    if (existingScriptWithNonce?.nonce) {
+      script.nonce = existingScriptWithNonce.nonce;
+    }
+
+    document.head.appendChild(script);
+  });
+
+  return loadPromise;
+};
+
+const escapeHtml = (value: string) =>
+  value.replace(/[&<>"']/g, (character) => {
+    switch (character) {
+      case '&':
+        return '&amp;';
+      case '<':
+        return '&lt;';
+      case '>':
+        return '&gt;';
+      case '"':
+        return '&quot;';
+      case "'":
+        return '&#39;';
+      default:
+        return character;
+    }
+  });
+
+const formatShiftSummary = (shift: MapShift | undefined) => {
+  if (!shift?.startAt) {
+    return 'Időpont egyeztetés alatt';
+  }
+
+  const dateFormatter = new Intl.DateTimeFormat('hu-HU', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+
+  const timeFormatter = new Intl.DateTimeFormat('hu-HU', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  const start = new Date(shift.startAt);
+  const date = dateFormatter.format(start);
+  const time = timeFormatter.format(start);
+  const hours =
+    typeof shift.hoursAwarded === 'number'
+      ? `${Number.isInteger(shift.hoursAwarded) ? shift.hoursAwarded.toFixed(0) : shift.hoursAwarded.toFixed(1)} óra`
+      : 'Időtartam egyeztetés alatt';
+
+  return `${date} • ${time} • ${hours}`;
+};
+
+const formatCapacity = (shift: MapShift | undefined) => {
+  if (!shift || typeof shift.capacity !== 'number') {
+    return 'Kapacitás egyeztetés alatt';
+  }
+
+  const registered = typeof shift.registeredCount === 'number' ? shift.registeredCount : 0;
+  return `${registered}/${shift.capacity} jelentkező`;
+};
+
+export default function Map({
+  opportunities,
+  center = DEFAULT_CENTER,
   zoom = 12,
-  onMarkerClick 
+  onMarkerClick,
+  userLocation = null,
+  favoriteIds = [],
 }: MapProps) {
-  const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<google.maps.Map | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
   const infoWindowsRef = useRef<google.maps.InfoWindow[]>([]);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const activeInfoRef = useRef<google.maps.InfoWindow | null>(null);
+  const clustererRef = useRef<MarkerClusterer | null>(null);
+  const hasInteractedRef = useRef(false);
+  const interactionListenersRef = useRef<google.maps.MapsEventListener[]>([]);
+  const suppressNextZoomRef = useRef(false);
+  const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const loadedRef = useRef(false);
 
-  // Cleanup function
-  const cleanup = () => {
-    // Close and remove all info windows
-    infoWindowsRef.current.forEach(infoWindow => {
-      infoWindow.close();
-    });
-    infoWindowsRef.current = [];
-
-    // Remove all markers
-    markersRef.current.forEach(marker => {
-      google.maps.event.clearInstanceListeners(marker);
-      marker.setMap(null);
-    });
-    markersRef.current = [];
-  };
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
   useEffect(() => {
-    const initializeMap = async () => {
-      if (!mapRef.current || loadedRef.current) return;
+    if (!containerRef.current) {
+      return;
+    }
 
+    if (!apiKey) {
+      setError(
+        'Google Maps API kulcs nem található. Add hozzá a NEXT_PUBLIC_GOOGLE_MAPS_API_KEY változót a .env.local fájlhoz.',
+      );
+      return;
+    }
+
+    let isMounted = true;
+
+    const initialize = async () => {
       try {
-        // Check if Google Maps is already loaded
-        if (typeof google !== 'undefined' && google.maps) {
-          initMap();
+        await loadGoogleMapsApi(apiKey);
+        const { Map } = (await google.maps.importLibrary('maps')) as google.maps.MapsLibrary;
+
+        if (!isMounted || !containerRef.current || mapRef.current) {
           return;
         }
 
-        // Get API key from environment variables
-        const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-        
-        if (!apiKey) {
-          throw new Error('Google Maps API key not found. Please add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to your .env.local file.');
-        }
+        const map = new Map(containerRef.current, {
+          center,
+          zoom,
+          mapId: 'IKSZ_FINDER_STUDENT_MAP',
+          disableDefaultUI: true,
+          zoomControl: true,
+        });
 
-        // Load Google Maps API
-        const script = document.createElement('script');
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
-        script.async = true;
-        script.defer = true;
-        
-        script.onload = () => {
-          initMap();
-        };
-        
-        script.onerror = () => {
-          throw new Error('Failed to load Google Maps API');
-        };
-
-        document.head.appendChild(script);
-        loadedRef.current = true;
-
-      } catch (err) {
-        console.error('Error loading Google Maps:', err);
-        setError(err instanceof Error ? err.message : 'Térkép betöltése sikertelen. Kérjük próbálja újra később.');
-      }
-    };
-
-    const initMap = () => {
-      if (!mapRef.current) return;
-
-      try {
-        // Initialize map
-        const map = new google.maps.Map(mapRef.current, {
-          center: { lat: center[0], lng: center[1] },
-          zoom: zoom,
-          styles: [
-            {
-              featureType: 'poi',
-              elementType: 'labels',
-              stylers: [{ visibility: 'off' }]
+        mapRef.current = map;
+        interactionListenersRef.current.forEach((listener) => listener.remove());
+        interactionListenersRef.current = [
+          map.addListener('dragstart', () => {
+            hasInteractedRef.current = true;
+          }),
+          map.addListener('zoom_changed', () => {
+            if (suppressNextZoomRef.current) {
+              suppressNextZoomRef.current = false;
+              return;
             }
-          ]
-        });
-
-        mapInstanceRef.current = map;
-        setIsLoaded(true);
+            hasInteractedRef.current = true;
+          }),
+        ];
+        setIsReady(true);
         setError(null);
-
-      } catch (err) {
-        console.error('Error initializing map:', err);
-        setError('Térkép inicializálása sikertelen.');
+      } catch (initializationError) {
+        console.error('Error initializing Google Maps:', initializationError);
+        setError('Nem sikerült betölteni a térképet. Kérjük próbáld meg később.');
       }
     };
 
-    initializeMap();
+    initialize();
 
-    // Cleanup on unmount
     return () => {
-      cleanup();
+      isMounted = false;
+      markersRef.current.forEach((marker) => {
+        google.maps.event.clearInstanceListeners(marker);
+        if ('setMap' in marker) {
+          marker.setMap(null);
+        } else {
+          marker.map = null;
+        }
+      });
+      markersRef.current = [];
+      infoWindowsRef.current.forEach((window) => window.close());
+      infoWindowsRef.current = [];
+      activeInfoRef.current = null;
+      clustererRef.current?.clearMarkers();
+      clustererRef.current = null;
+      interactionListenersRef.current.forEach((listener) => listener.remove());
+      interactionListenersRef.current = [];
+      hasInteractedRef.current = false;
+      suppressNextZoomRef.current = false;
+      mapRef.current = null;
     };
-  }, [center, zoom]);
+  }, [apiKey]);
 
-  // Update markers when opportunities change
   useEffect(() => {
-    if (!mapInstanceRef.current || !isLoaded) return;
+    const map = mapRef.current;
+    if (!isReady || !map) {
+      return;
+    }
 
-    // Clean up existing markers
-    cleanup();
+    const shouldFitBounds = !hasInteractedRef.current;
 
-    const map = mapInstanceRef.current;
-
-    // Add user location marker
-    const userMarker = new google.maps.Marker({
-      position: { lat: center[0], lng: center[1] },
-      map: map,
-      title: 'Az Ön helyzete',
-      icon: {
-        path: google.maps.SymbolPath.CIRCLE,
-        scale: 8,
-        fillColor: '#ef4444',
-        fillOpacity: 1,
-        strokeColor: '#ffffff',
-        strokeWeight: 2
+    clustererRef.current?.clearMarkers();
+    markersRef.current.forEach((marker) => {
+      google.maps.event.clearInstanceListeners(marker);
+      if ('setMap' in marker) {
+        marker.setMap(null);
+      } else {
+        marker.map = null;
       }
     });
+    markersRef.current = [];
+    infoWindowsRef.current.forEach((window) => window.close());
+    infoWindowsRef.current = [];
+    activeInfoRef.current = null;
 
-    const userInfoWindow = new google.maps.InfoWindow({
-      content: '<div style="padding: 8px;"><strong>Az Ön helyzete</strong></div>'
-    });
+    const bounds = new google.maps.LatLngBounds();
+    let hasPoints = false;
 
-    const userClickListener = userMarker.addListener('click', () => {
-      // Close other info windows
-      infoWindowsRef.current.forEach(iw => iw.close());
-      userInfoWindow.open(map, userMarker);
-    });
+    const clusterMarkers: google.maps.Marker[] = [];
+    const debugMarkers: Array<{ title: string | null; position?: google.maps.LatLngLiteral; saved: boolean }> = [];
+    const savedIds = new Set(favoriteIds);
 
-    markersRef.current.push(userMarker);
-    infoWindowsRef.current.push(userInfoWindow);
+    if (userLocation) {
+      const userMarker = new google.maps.Marker({
+        position: userLocation,
+        map,
+        title: 'Az Ön helyzete',
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 8,
+          fillColor: '#ef4444',
+          fillOpacity: 1,
+          strokeColor: '#ffffff',
+          strokeWeight: 2,
+        },
+        zIndex: 1000,
+      });
 
-    // Add opportunity markers
-    const opportunitiesToShow = opportunities.length > 0 ? opportunities : [
-      {
-        id: 'demo-1',
-        title: 'Városliget - Környezetvédelem',
-        location: { address: 'Városliget, Budapest', lat: 47.5186, lng: 19.0823 },
-        date: '2024-02-15',
-        duration: 4,
-        capacity: 20,
-        registered: 12
-      },
-      {
-        id: 'demo-2',
-        title: 'Margit körút - Idősek segítése',
-        location: { address: 'Margit körút 45, Budapest', lat: 47.5125, lng: 19.0364 },
-        date: '2024-02-18',
-        duration: 3,
-        capacity: 8,
-        registered: 5
-      },
-      {
-        id: 'demo-3',
-        title: 'Üllői út - Állatvédelem',
-        location: { address: 'Üllői út 200, Budapest', lat: 47.4563, lng: 19.1234 },
-        date: '2024-02-20',
-        duration: 5,
-        capacity: 15,
-        registered: 8
-      },
-      {
-        id: 'demo-4',
-        title: 'Váci út - Gyermekek',
-        location: { address: 'Váci út 150, Budapest', lat: 47.5567, lng: 19.0678 },
-        date: '2024-02-22',
-        duration: 3,
-        capacity: 6,
-        registered: 4
-      },
-      {
-        id: 'demo-5',
-        title: 'Keleti pályaudvar - Szociális',
-        location: { address: 'Keleti pályaudvar, Budapest', lat: 47.5000, lng: 19.0833 },
-        date: '2024-02-25',
-        duration: 4,
-        capacity: 12,
-        registered: 9
+      markersRef.current.push(userMarker);
+      bounds.extend(userLocation);
+      hasPoints = true;
+    }
+
+    opportunities.forEach((opportunity) => {
+      const lat = opportunity.location?.lat;
+      const lng = opportunity.location?.lng;
+
+      if (typeof lat !== 'number' || typeof lng !== 'number') {
+        return;
       }
-    ];
 
-    opportunitiesToShow.forEach((opportunity) => {
-      if (opportunity.location?.lat && opportunity.location?.lng) {
-        const availableSpots = opportunity.capacity - opportunity.registered;
-        const markerColor = availableSpots > 5 ? '#10b981' : availableSpots > 0 ? '#f59e0b' : '#ef4444';
-        
-        const marker = new google.maps.Marker({
-          position: { lat: opportunity.location.lat, lng: opportunity.location.lng },
-          map: map,
-          title: opportunity.title,
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 10,
-            fillColor: '#3b82f6',
-            fillOpacity: 1,
-            strokeColor: '#ffffff',
-            strokeWeight: 2
-          }
+      const position = { lat, lng };
+
+      const shift = opportunity.nextShift;
+      const capacity = typeof shift?.capacity === 'number' ? shift.capacity : null;
+      const registered = typeof shift?.registeredCount === 'number' ? shift.registeredCount : 0;
+      const available = capacity !== null ? capacity - registered : null;
+
+      const markerColor =
+        available === null
+          ? '#3b82f6'
+          : available > 5
+            ? '#10b981'
+            : available > 0
+              ? '#f59e0b'
+              : '#ef4444';
+
+      const isSaved = savedIds.has(opportunity.id);
+      const fillColor = isSaved ? '#facc15' : markerColor;
+      const strokeColor = isSaved ? '#92400e' : '#ffffff';
+
+      const marker = new google.maps.Marker({
+        position,
+        map,
+        title: opportunity.title,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 10,
+          fillColor,
+          fillOpacity: 1,
+          strokeColor,
+          strokeWeight: 2,
+        },
+        zIndex: isSaved ? 200 : undefined,
+      });
+
+      const savedBadgeHtml = isSaved
+        ? '<span style="display:inline-flex;align-items:center;gap:4px;background-color:#fef3c7;color:#92400e;border-radius:9999px;padding:2px 8px;font-size:11px;font-weight:600;">★ Mentve</span>'
+        : '';
+
+      const infoWindowContent = `
+        <div style="max-width: 260px; font-family: 'Inter', sans-serif;">
+          <h3 style="margin: 0 0 4px; font-size: 15px; font-weight: 600; color: #111827;">
+            ${escapeHtml(opportunity.title)}
+          </h3>
+          ${savedBadgeHtml}
+          <div style="margin-bottom: 4px; font-size: 13px; color: #4b5563;">
+            ${escapeHtml(opportunity.location.address)}
+          </div>
+          <div style="margin-bottom: 4px; font-size: 13px; color: #4b5563;">
+            ${escapeHtml(formatShiftSummary(shift))}
+          </div>
+          <div style="font-size: 12px; color: #6b7280;">
+            ${escapeHtml(formatCapacity(shift))}
+          </div>
+        </div>
+      `;
+
+      const infoWindow = new google.maps.InfoWindow({
+        content: infoWindowContent,
+      });
+
+      const handleMouseOver = () => {
+        if (activeInfoRef.current === infoWindow) {
+          return;
+        }
+        infoWindow.open({
+          anchor: marker,
+          map,
         });
+      };
 
-        const statusText = availableSpots > 0 ? `${availableSpots} hely maradt` : 'Betelt';
-        
-        const infoWindow = new google.maps.InfoWindow({
-          content: `
-            <div style="padding: 12px; min-width: 250px; font-family: system-ui, -apple-system, sans-serif;">
-              <h3 style="font-weight: 600; font-size: 16px; margin: 0 0 8px 0; color: #1f2937;">${opportunity.title}</h3>
-              <p style="font-size: 14px; color: #6b7280; margin: 0 0 6px 0; display: flex; align-items: center;">
-                <span style="margin-right: 6px;">📍</span>
-                ${opportunity.location.address}
-              </p>
-              <p style="font-size: 14px; color: #3b82f6; margin: 0 0 6px 0; display: flex; align-items: center;">
-                <span style="margin-right: 6px;">📅</span>
-                ${opportunity.date} • ${opportunity.duration}h
-              </p>
-              <p style="font-size: 14px; color: ${markerColor}; margin: 0; font-weight: 500; display: flex; align-items: center;">
-                <span style="margin-right: 6px;">👥</span>
-                ${statusText}
-              </p>
-            </div>
-          `
+      const handleMouseOut = () => {
+        if (activeInfoRef.current === infoWindow) {
+          return;
+        }
+        infoWindow.close();
+      };
+
+      const handleClick = () => {
+        activeInfoRef.current?.close();
+        infoWindow.open({
+          anchor: marker,
+          map,
         });
+        activeInfoRef.current = infoWindow;
+        onMarkerClick?.(opportunity.id);
+      };
 
-        const clickListener = marker.addListener('click', () => {
-          // Close other info windows
-          infoWindowsRef.current.forEach(iw => iw.close());
-          
-          infoWindow.open(map, marker);
-          
-          if (onMarkerClick) {
-            onMarkerClick(opportunity.id);
-          }
-        });
+      marker.addListener('mouseover', handleMouseOver);
+      marker.addListener('mouseout', handleMouseOut);
+      marker.addListener('click', handleClick);
 
-        markersRef.current.push(marker);
-        infoWindowsRef.current.push(infoWindow);
-      }
+      markersRef.current.push(marker);
+      infoWindowsRef.current.push(infoWindow);
+      bounds.extend(position);
+      hasPoints = true;
+      clusterMarkers.push(marker);
+      debugMarkers.push({
+        title: marker.getTitle(),
+        position: marker.getPosition()?.toJSON(),
+        saved: isSaved,
+      });
     });
 
-  }, [opportunities, isLoaded, center, onMarkerClick]);
+    if (clusterMarkers.length > 0) {
+      clustererRef.current = new MarkerClusterer({ map, markers: clusterMarkers });
+    }
+
+    if (hasPoints && shouldFitBounds) {
+      suppressNextZoomRef.current = true;
+      map.fitBounds(bounds, 64);
+    } else if (!hasPoints) {
+      suppressNextZoomRef.current = true;
+      map.setCenter(center);
+      map.setZoom(zoom);
+    }
+
+    if (process.env.NODE_ENV !== 'production') {
+      (window as unknown as Record<string, unknown>).__IKSZ_MAP_DEBUG = {
+        markers: debugMarkers,
+        userLocation,
+      };
+    }
+  }, [center, favoriteIds, isReady, onMarkerClick, opportunities, userLocation, zoom]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!isReady || !map || !userLocation || hasInteractedRef.current) {
+      return;
+    }
+
+    suppressNextZoomRef.current = true;
+    map.panTo(userLocation);
+  }, [isReady, userLocation]);
 
   if (error) {
     return (
-      <div className="w-full h-full rounded-lg border bg-gray-100 flex items-center justify-center">
-        <div className="text-center p-6">
-          <div className="text-red-500 mb-2">⚠️</div>
-          <p className="text-gray-600 text-sm">{error}</p>
-          <div className="mt-4 p-3 bg-blue-50 rounded-lg text-left">
-            <p className="text-xs text-blue-800 font-medium mb-2">Hogyan szerezz Google Maps API kulcsot:</p>
-            <ol className="text-xs text-blue-700 space-y-1">
-              <li>1. Menj a <a href="https://console.cloud.google.com" target="_blank" className="underline">Google Cloud Console</a>-ra</li>
-              <li>2. Hozz létre egy új projektet vagy válassz egy meglévőt</li>
-              <li>3. Engedélyezd a "Maps JavaScript API"-t</li>
-              <li>4. Hozz létre egy API kulcsot</li>
-              <li>5. Add hozzá a .env.local fájlhoz</li>
-            </ol>
-          </div>
-        </div>
+      <div className="flex h-full items-center justify-center bg-slate-100 px-4 text-center text-sm text-slate-600">
+        {error}
       </div>
     );
   }
 
-  // Always render the map container so the Google Maps API can initialize.
-  return (
-    <div
-      className="w-full h-full rounded-lg relative"
-      style={{ minHeight: '400px' }}
-    >
-      {/* Map container */}
-      <div ref={mapRef} className="w-full h-full rounded-lg" />
-
-      {/* Loading overlay */}
-      {!isLoaded && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-75">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-            <p className="text-gray-600 text-sm">Google Maps betöltése...</p>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+  return <div ref={containerRef} className="h-full w-full" />;
 }

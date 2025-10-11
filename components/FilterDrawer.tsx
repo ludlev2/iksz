@@ -11,47 +11,115 @@ import { Filter, Calendar as CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { hu } from 'date-fns/locale';
 
-interface FilterDrawerProps {
-  filters: {
-    distance: number;
-    categories: string[];
-    date: Date | undefined;
-  };
-  onFiltersChange: (filters: any) => void;
+interface FilterState {
+  distance: number;
+  categories: string[];
+  date: Date | undefined;
+  sort: string;
 }
 
-const categories = [
-  { id: 'environment', label: 'Környezetvédelem', color: 'bg-green-100 text-green-800' },
-  { id: 'elderly', label: 'Idősek segítése', color: 'bg-purple-100 text-purple-800' },
-  { id: 'animals', label: 'Állatvédelem', color: 'bg-orange-100 text-orange-800' },
-  { id: 'children', label: 'Gyermekek', color: 'bg-pink-100 text-pink-800' },
-  { id: 'social', label: 'Szociális', color: 'bg-blue-100 text-blue-800' },
-  { id: 'education', label: 'Oktatás', color: 'bg-indigo-100 text-indigo-800' }
-];
+interface FilterDrawerProps {
+  filters: FilterState;
+  onFiltersChange: (filters: FilterState) => void;
+  onResetFilters: () => void;
+  categories: {
+    id: string;
+    slug: string;
+    label: string;
+  }[];
+  isLoadingCategories?: boolean;
+  categoriesError?: string | null;
+  defaultDistance: number;
+  isDefaultSort: boolean;
+}
 
-export default function FilterDrawer({ filters, onFiltersChange }: FilterDrawerProps) {
+const categoryColors: Record<string, string> = {
+  environment: 'bg-green-100 text-green-800',
+  elderly: 'bg-purple-100 text-purple-800',
+  animals: 'bg-orange-100 text-orange-800',
+  children: 'bg-pink-100 text-pink-800',
+  social: 'bg-blue-100 text-blue-800',
+  education: 'bg-indigo-100 text-indigo-800',
+};
+
+export default function FilterDrawer({
+  filters,
+  onFiltersChange,
+  onResetFilters,
+  categories,
+  isLoadingCategories = false,
+  categoriesError = null,
+  defaultDistance,
+  isDefaultSort,
+}: FilterDrawerProps) {
   const [open, setOpen] = useState(false);
 
   const toggleCategory = (categoryId: string) => {
     const newCategories = filters.categories.includes(categoryId)
       ? filters.categories.filter(c => c !== categoryId)
       : [...filters.categories, categoryId];
-    
+
     onFiltersChange({ ...filters, categories: newCategories });
   };
 
-  const clearFilters = () => {
-    onFiltersChange({
-      distance: 10,
-      categories: [],
-      date: undefined
-    });
-  };
-
   const activeFiltersCount = 
-    (filters.distance < 10 ? 1 : 0) + 
-    filters.categories.length + 
-    (filters.date ? 1 : 0);
+    (filters.distance < defaultDistance ? 1 : 0) +
+    filters.categories.length +
+    (filters.date ? 1 : 0) +
+    (isDefaultSort ? 0 : 1);
+
+  const renderCategoryBadges = () => {
+    if (isLoadingCategories) {
+      return (
+        <div className="flex flex-wrap gap-2">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <div
+              key={index}
+              className="h-8 w-24 animate-pulse rounded-full bg-muted"
+            />
+          ))}
+        </div>
+      );
+    }
+
+    if (categoriesError) {
+      return (
+        <p className="text-sm text-red-600">
+          {categoriesError}
+        </p>
+      );
+    }
+
+    if (categories.length === 0) {
+      return (
+        <p className="text-sm text-muted-foreground">
+          Nincs elérhető kategória.
+        </p>
+      );
+    }
+
+    return (
+      <div className="flex flex-wrap gap-2">
+        {categories.map((category) => {
+          const isActive = filters.categories.includes(category.slug);
+          const colorClass = categoryColors[category.slug] ?? 'bg-gray-100 text-gray-800';
+
+          return (
+            <Badge
+              key={category.id}
+              variant={isActive ? 'default' : 'outline-solid'}
+              className={`cursor-pointer ${
+                isActive ? colorClass : 'hover:bg-gray-100'
+              }`}
+              onClick={() => toggleCategory(category.slug)}
+            >
+              {category.label}
+            </Badge>
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -92,22 +160,7 @@ export default function FilterDrawer({ filters, onFiltersChange }: FilterDrawerP
           {/* Category Filter */}
           <div>
             <label className="text-sm font-medium mb-3 block">Kategóriák</label>
-            <div className="flex flex-wrap gap-2">
-              {categories.map((category) => (
-                <Badge
-                  key={category.id}
-                  variant={filters.categories.includes(category.id) ? "default" : "outline"}
-                  className={`cursor-pointer ${
-                    filters.categories.includes(category.id) 
-                      ? category.color 
-                      : 'hover:bg-gray-100'
-                  }`}
-                  onClick={() => toggleCategory(category.id)}
-                >
-                  {category.label}
-                </Badge>
-              ))}
-            </div>
+            {renderCategoryBadges()}
           </div>
 
           {/* Date Filter */}
@@ -136,9 +189,9 @@ export default function FilterDrawer({ filters, onFiltersChange }: FilterDrawerP
           </div>
 
           {/* Clear Filters */}
-          <Button 
-            variant="outline" 
-            onClick={clearFilters}
+          <Button
+            variant="outline"
+            onClick={onResetFilters}
             className="w-full"
           >
             Szűrők törlése

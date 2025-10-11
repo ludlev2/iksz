@@ -310,7 +310,7 @@ export default function HelpPage() {
                     <ul className="space-y-3">
                       {requirement.items.map((item, itemIndex) => (
                         <li key={itemIndex} className="flex items-start gap-3">
-                          <CheckCircle className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
+                          <CheckCircle className="w-5 h-5 text-green-500 mt-0.5 shrink-0" />
                           <span className="text-gray-700">{item}</span>
                         </li>
                       ))}
@@ -329,7 +329,7 @@ export default function HelpPage() {
               </CardHeader>
               <CardContent className="text-yellow-800">
                 <ul className="space-y-2">
-                  <li>• Minimum 40 "kontakt óra" + maximum 5 óra felkészítés + maximum 5 óra lezárás</li>
+                  <li>• Minimum 40 &quot;kontakt óra&quot; + maximum 5 óra felkészítés + maximum 5 óra lezárás</li>
                   <li>• Tanítási napon maximum 3 óra, egyéb napon maximum 5 óra</li>
                   <li>• A szolgálat teljesítésére 3 tanév áll rendelkezésre</li>
                   <li>• Nyári szünetben intenzívebb ütemezés is lehetséges</li>
