@@ -38,6 +38,7 @@ interface MapProps {
   zoom?: number;
   onMarkerClick?: (opportunityId: string) => void;
   userLocation?: LatLngLiteral | null;
+  favoriteIds?: string[];
 }
 
 let loadPromise: Promise<void> | null = null;
@@ -152,6 +153,7 @@ export default function Map({
   zoom = 12,
   onMarkerClick,
   userLocation = null,
+  favoriteIds = [],
 }: MapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
@@ -272,6 +274,8 @@ export default function Map({
     let hasPoints = false;
 
     const clusterMarkers: google.maps.Marker[] = [];
+    const debugMarkers: Array<{ title: string | null; position?: google.maps.LatLngLiteral; saved: boolean }> = [];
+    const savedIds = new Set(favoriteIds);
 
     if (userLocation) {
       const userMarker = new google.maps.Marker({
@@ -318,6 +322,10 @@ export default function Map({
               ? '#f59e0b'
               : '#ef4444';
 
+      const isSaved = savedIds.has(opportunity.id);
+      const fillColor = isSaved ? '#facc15' : markerColor;
+      const strokeColor = isSaved ? '#92400e' : '#ffffff';
+
       const marker = new google.maps.Marker({
         position,
         map,
@@ -325,18 +333,24 @@ export default function Map({
         icon: {
           path: google.maps.SymbolPath.CIRCLE,
           scale: 10,
-          fillColor: markerColor,
+          fillColor,
           fillOpacity: 1,
-          strokeColor: '#ffffff',
+          strokeColor,
           strokeWeight: 2,
         },
+        zIndex: isSaved ? 200 : undefined,
       });
+
+      const savedBadgeHtml = isSaved
+        ? '<span style="display:inline-flex;align-items:center;gap:4px;background-color:#fef3c7;color:#92400e;border-radius:9999px;padding:2px 8px;font-size:11px;font-weight:600;">★ Mentve</span>'
+        : '';
 
       const infoWindowContent = `
         <div style="max-width: 260px; font-family: 'Inter', sans-serif;">
           <h3 style="margin: 0 0 4px; font-size: 15px; font-weight: 600; color: #111827;">
             ${escapeHtml(opportunity.title)}
           </h3>
+          ${savedBadgeHtml}
           <div style="margin-bottom: 4px; font-size: 13px; color: #4b5563;">
             ${escapeHtml(opportunity.location.address)}
           </div>
@@ -389,6 +403,11 @@ export default function Map({
       bounds.extend(position);
       hasPoints = true;
       clusterMarkers.push(marker);
+      debugMarkers.push({
+        title: marker.getTitle(),
+        position: marker.getPosition()?.toJSON(),
+        saved: isSaved,
+      });
     });
 
     if (clusterMarkers.length > 0) {
@@ -406,14 +425,11 @@ export default function Map({
 
     if (process.env.NODE_ENV !== 'production') {
       (window as unknown as Record<string, unknown>).__IKSZ_MAP_DEBUG = {
-        markers: clusterMarkers.map((marker) => ({
-          title: marker.getTitle(),
-          position: marker.getPosition()?.toJSON(),
-        })),
+        markers: debugMarkers,
         userLocation,
       };
     }
-  }, [center, isReady, onMarkerClick, opportunities, userLocation, zoom]);
+  }, [center, favoriteIds, isReady, onMarkerClick, opportunities, userLocation, zoom]);
 
   useEffect(() => {
     const map = mapRef.current;

@@ -14,7 +14,7 @@ import { createClient } from '@/utils/supabase/client';
 
 const DEFAULT_TARGET_HOURS = 50;
 
-type UserRole = 'student' | 'provider' | 'teacher';
+type UserRole = 'student' | 'provider' | 'teacher' | 'admin';
 
 interface AuthUser {
   id: string;
@@ -59,6 +59,8 @@ const mapProfileRole = (role: string | null | undefined): UserRole => {
       return 'teacher';
     case 'organization_admin':
       return 'provider';
+    case 'admin':
+      return 'admin';
     default:
       return 'student';
   }

@@ -495,6 +495,10 @@ export default function StudentDashboardClient({ initialOpportunities }: Student
     () => new Set(favorites.map((favorite) => favorite.opportunityId)),
     [favorites],
   );
+  const favoriteIdList = useMemo(
+    () => favorites.map((favorite) => favorite.opportunityId),
+    [favorites],
+  );
 
   const opportunitiesWithCounts = useMemo<AugmentedOpportunity[]>(
     () =>
@@ -851,7 +855,7 @@ export default function StudentDashboardClient({ initialOpportunities }: Student
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+        <div className="container mx-auto px-4 py-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             {isGuestView ? (
               <>
@@ -867,7 +871,13 @@ export default function StudentDashboardClient({ initialOpportunities }: Student
               </>
             )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              onClick={() => router.push('/submit')}
+              className="bg-blue-600 text-white hover:bg-blue-700"
+            >
+              Új lehetőség beküldése
+            </Button>
             <Button variant="outline" onClick={() => router.push('/help')}>
               <HelpCircle className="w-4 h-4 mr-2" />
               Szerződés Segítő
@@ -913,23 +923,11 @@ export default function StudentDashboardClient({ initialOpportunities }: Student
 
           <div className={isGuestView ? 'lg:col-span-1' : 'lg:col-span-3'}>
             <div className="bg-linear-to-r from-blue-600 to-blue-700 rounded-lg p-6 mb-6 text-white">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold mb-2">Kell segítség a szerződéshez? 📋</h3>
-                  <p className="text-blue-100">
-                    Töltsd le a szerződésmintákat, ismerj meg minden jogszabályi követelményt, és kérj
-                    segítséget lépésről lépésre.
-                  </p>
-                </div>
-                <Button
-                  variant="secondary"
-                  onClick={() => router.push('/help')}
-                  className="bg-white text-blue-700 hover:bg-blue-50"
-                >
-                  <HelpCircle className="w-4 h-4 mr-2" />
-                  Szerződés Segítő Központ
-                </Button>
-              </div>
+              <h3 className="text-lg font-semibold mb-2">Kell segítség a szerződéshez? 📋</h3>
+              <p className="text-blue-100">
+                Töltsd le a szerződésmintákat, ismerj meg minden jogszabályi követelményt, és kérj
+                segítséget lépésről lépésre.
+              </p>
             </div>
 
             <div className="bg-white rounded-lg border p-4 mb-6">
@@ -1018,6 +1016,7 @@ export default function StudentDashboardClient({ initialOpportunities }: Student
                       center={mapCenter}
                       opportunities={filteredOpportunities}
                       userLocation={userLocation}
+                      favoriteIds={favoriteIdList}
                       onMarkerClick={handleMarkerClick}
                     />
                   </div>

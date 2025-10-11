@@ -45,6 +45,12 @@ export const documentType = pgEnum('document_type', [
   'other',
 ]);
 
+export const submissionStatus = pgEnum('submission_status', [
+  'pending',
+  'approved',
+  'rejected',
+]);
+
 export const profiles = pgTable('profiles', {
   id: uuid('id').primaryKey(),
   role: profileRole('role').notNull(),
@@ -337,4 +343,28 @@ export const studentDocuments = pgTable('student_documents', {
   updatedAt: timestamp('updated_at', { withTimezone: true })
     .defaultNow()
     .notNull(),
+});
+
+export const submittedOpportunities = pgTable('submitted_opportunities', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  status: submissionStatus('status').default('pending').notNull(),
+  submitterName: text('submitter_name').notNull(),
+  submitterEmail: text('submitter_email').notNull(),
+  submitterRole: text('submitter_role').notNull(),
+  organizationName: text('organization_name').notNull(),
+  contactName: text('contact_name'),
+  contactEmail: text('contact_email').notNull(),
+  contactPhone: text('contact_phone'),
+  opportunityTitle: text('opportunity_title').notNull(),
+  opportunityDescription: text('opportunity_description'),
+  locationAddress: text('location_address').notNull(),
+  city: text('city'),
+  shiftDates: text('shift_dates').notNull(),
+  expectedHours: numeric('expected_hours', 5, 2),
+  capacity: integer('capacity'),
+  additionalNotes: text('additional_notes'),
+  reviewerId: uuid('reviewer_id').references(() => profiles.id, { onDelete: 'set null' }),
+  reviewNotes: text('review_notes'),
+  reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });

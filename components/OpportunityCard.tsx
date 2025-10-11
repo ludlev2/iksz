@@ -150,7 +150,16 @@ export default function OpportunityCard({
     <Card className="hover:shadow-md transition-shadow">
       <CardHeader className="pb-3">
         <div className="flex justify-between items-start gap-3">
-          <CardTitle className="text-lg leading-tight">{opportunity.title}</CardTitle>
+          <div className="min-w-0 space-y-1">
+            <CardTitle className="text-lg leading-tight break-words">
+              {opportunity.title}
+            </CardTitle>
+            {isFavorite && (
+              <Badge className="bg-yellow-100 text-yellow-800 border-transparent w-fit">
+                Mentve
+              </Badge>
+            )}
+          </div>
           <Badge className={badgeClass}>
             {opportunity.categoryLabel}
           </Badge>
