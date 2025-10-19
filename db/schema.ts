@@ -361,6 +361,7 @@ export const submittedOpportunities = pgTable('submitted_opportunities', {
   locationAddress: text('location_address').notNull(),
   city: text('city'),
   shiftDates: text('shift_dates').notNull(),
+  deadline: timestamp('deadline', { withTimezone: true }),
   expectedHours: numeric('expected_hours', 5, 2),
   capacity: integer('capacity'),
   additionalNotes: text('additional_notes'),
