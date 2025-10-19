@@ -1,15 +1,5 @@
 import { createClient as createServerSupabaseClient } from '@/utils/supabase/server';
 
-export interface OpportunityShift {
-  id: string;
-  startAt: string;
-  endAt: string;
-  hoursAwarded?: number;
-  capacity?: number;
-  registeredCount?: number;
-  status?: string;
-}
-
 export interface Opportunity {
   id: string;
   title: string;
@@ -21,14 +11,13 @@ export interface Opportunity {
     lat?: number;
     lng?: number;
   };
+  deadline?: string | null;
   organizationName: string;
-  nextShift?: OpportunityShift;
   distanceKm?: number;
   longDescription?: string;
   organizationEmail?: string;
   organizationPhone?: string;
   organizationWebsite?: string;
-  shifts?: OpportunityShift[];
 }
 
 interface SupabaseOpportunityRow {
@@ -41,6 +30,7 @@ interface SupabaseOpportunityRow {
   lat: number | null;
   lng: number | null;
   published: boolean;
+  deadline: string | null;
   opportunity_categories: {
     id: string;
     slug: string;
@@ -53,14 +43,6 @@ interface SupabaseOpportunityRow {
     phone: string | null;
     website: string | null;
   } | null;
-  shifts: {
-    id: string;
-    start_at: string;
-    end_at: string;
-    hours_awarded: number | string | null;
-    capacity: number | null;
-    status: string;
-  }[] | null;
 }
 
 const BUDAPEST_CENTER = {
@@ -95,44 +77,11 @@ const toNumberOrUndefined = (value: number | string | null) => {
   return undefined;
 };
 
-type SupabaseShiftRow = SupabaseOpportunityRow['shifts'][number];
-
-const normalizeShift = (shift: SupabaseShiftRow): OpportunityShift => {
-  let hoursAwarded = toNumberOrUndefined(shift.hours_awarded);
-
-  if (hoursAwarded === undefined) {
-    const start = new Date(shift.start_at);
-    const end = new Date(shift.end_at);
-    const diff = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-    hoursAwarded = Number(diff.toFixed(1));
-  }
-
-  return {
-    id: shift.id,
-    startAt: shift.start_at,
-    endAt: shift.end_at,
-    hoursAwarded,
-    capacity: shift.capacity ?? undefined,
-    registeredCount: 0,
-    status: shift.status,
-  };
-};
-
 const normalizeOpportunity = (row: SupabaseOpportunityRow): Opportunity => {
   const locationAddress =
     [row.address, row.city].filter(Boolean).join(', ') || 'Helyszín egyeztetés alatt';
   const lat = toNumberOrUndefined(row.lat);
   const lng = toNumberOrUndefined(row.lng);
-
-  const normalizedShifts = (row.shifts ?? []).map((shift) => normalizeShift(shift));
-  const publishedShifts = normalizedShifts.filter((shift) => shift.status === 'published');
-  const shiftPool = publishedShifts.length > 0 ? publishedShifts : normalizedShifts;
-  const nextShift = shiftPool
-    .slice()
-    .sort(
-      (a, b) =>
-        new Date(a.startAt).getTime() - new Date(b.startAt).getTime(),
-    )[0];
 
   return {
     id: row.id,
@@ -145,17 +94,16 @@ const normalizeOpportunity = (row: SupabaseOpportunityRow): Opportunity => {
       lat,
       lng,
     },
+    deadline: row.deadline,
     organizationName: row.organization?.name ?? 'Ismeretlen szervezet',
     organizationEmail: row.organization?.email ?? undefined,
     organizationPhone: row.organization?.phone ?? undefined,
     organizationWebsite: row.organization?.website ?? undefined,
     longDescription: row.description ?? undefined,
-    nextShift,
     distanceKm:
       lat !== undefined && lng !== undefined
         ? calculateDistanceKm(BUDAPEST_CENTER.lat, BUDAPEST_CENTER.lng, lat, lng)
         : undefined,
-    shifts: normalizedShifts,
   };
 };
 
@@ -175,6 +123,7 @@ export const fetchPublishedOpportunities = async (): Promise<Opportunity[]> => {
         lat,
         lng,
         published,
+        deadline,
         opportunity_categories:opportunity_categories (
           id,
           slug,
@@ -186,14 +135,6 @@ export const fetchPublishedOpportunities = async (): Promise<Opportunity[]> => {
           email,
           phone,
           website
-        ),
-        shifts:opportunity_shifts (
-          id,
-          start_at,
-          end_at,
-          hours_awarded,
-          capacity,
-          status
         )
       `,
     )
@@ -224,6 +165,7 @@ export const fetchOpportunityById = async (id: string): Promise<Opportunity | nu
         lat,
         lng,
         published,
+        deadline,
         opportunity_categories:opportunity_categories (
           id,
           slug,
@@ -235,14 +177,6 @@ export const fetchOpportunityById = async (id: string): Promise<Opportunity | nu
           email,
           phone,
           website
-        ),
-        shifts:opportunity_shifts (
-          id,
-          start_at,
-          end_at,
-          hours_awarded,
-          capacity,
-          status
         )
       `,
     )

@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
-import { Search, Map as MapIcon, List, LogOut, HelpCircle, Calendar, Clock, Mail } from 'lucide-react';
+import { Search, Map as MapIcon, List, LogOut, HelpCircle, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,7 +11,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -21,14 +20,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog';
 import OpportunityCard from '@/components/OpportunityCard';
 import FilterDrawer from '@/components/FilterDrawer';
 import HourCounter from '@/components/HourCounter';
@@ -44,7 +35,7 @@ const OpportunityMap = dynamic(() => import('@/components/Map'), {
   ),
 });
 
-type SortOption = 'recent' | 'soonest' | 'distance';
+type SortOption = 'recent' | 'deadline' | 'distance';
 
 interface Filters {
   distance: number;
@@ -61,20 +52,7 @@ interface FavoriteItem {
   opportunityId: string;
   title: string;
   organizationName: string;
-  nextShiftStart: string | null;
-  location: string | null;
-}
-
-interface UpcomingShiftItem {
-  applicationId: string;
-  status: string;
-  shiftId: string;
-  startAt: string;
-  endAt: string | null;
-  hoursAwarded: number | null;
-  opportunityId: string;
-  title: string;
-  organizationName: string;
+  deadline: string | null;
   location: string | null;
 }
 
@@ -83,10 +61,6 @@ interface CategoryOption {
   slug: string;
   label: string;
 }
-
-type AugmentedOpportunity = Opportunity & {
-  hasPendingApplication?: boolean;
-};
 
 const DEFAULT_DISTANCE = 10;
 const DEFAULT_MAP_CENTER = { lat: 47.4979, lng: 19.0402 } as const;
@@ -101,7 +75,7 @@ const createDefaultFilters = (): Filters => ({
 
 const sortOptions: { value: SortOption; label: string }[] = [
   { value: 'recent', label: 'Legújabb' },
-  { value: 'soonest', label: 'Legközelebbi időpont' },
+  { value: 'deadline', label: 'Legkorábbi határidő' },
   { value: 'distance', label: 'Legközelebbi távolság' },
 ];
 
@@ -111,25 +85,6 @@ const formatDate = (isoDate: string) =>
     month: 'long',
     day: 'numeric',
   }).format(new Date(isoDate));
-
-const formatTime = (isoDate: string) =>
-  new Intl.DateTimeFormat('hu-HU', {
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(isoDate));
-
-const toHoursNumber = (value: number | string | null | undefined): number | null => {
-  if (typeof value === 'number') {
-    return Number.isFinite(value) ? value : null;
-  }
-
-  if (typeof value === 'string') {
-    const parsed = Number.parseFloat(value);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-
-  return null;
-};
 
 export default function StudentDashboardClient({ initialOpportunities }: StudentDashboardClientProps) {
   const { user, logout, isLoading: authLoading } = useAuth();
@@ -144,17 +99,7 @@ export default function StudentDashboardClient({ initialOpportunities }: Student
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [favoritesLoading, setFavoritesLoading] = useState(false);
   const [favoritesError, setFavoritesError] = useState<string | null>(null);
-  const [upcomingShifts, setUpcomingShifts] = useState<UpcomingShiftItem[]>([]);
-  const [upcomingLoading, setUpcomingLoading] = useState(false);
-  const [upcomingError, setUpcomingError] = useState<string | null>(null);
   const [favoriteUpdatingId, setFavoriteUpdatingId] = useState<string | null>(null);
-  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
-  const [emailOpportunity, setEmailOpportunity] = useState<Opportunity | null>(null);
-  const [emailBody, setEmailBody] = useState('');
-  const [emailShiftId, setEmailShiftId] = useState<string | null>(null);
-  const [signupLoadingId, setSignupLoadingId] = useState<string | null>(null);
-  const [shiftRegistrations, setShiftRegistrations] = useState<Record<string, number>>({});
-  const [cancellingApplicationId, setCancellingApplicationId] = useState<string | null>(null);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
@@ -195,16 +140,6 @@ export default function StudentDashboardClient({ initialOpportunities }: Student
     );
   }, [locationRequested]);
 
-  const handleEmailDialogOpenChange = useCallback((open: boolean) => {
-    setEmailDialogOpen(open);
-    if (!open) {
-      setEmailOpportunity(null);
-      setEmailShiftId(null);
-      setEmailBody('');
-      setSignupLoadingId(null);
-    }
-  }, []);
-
   const fetchFavorites = useCallback(async () => {
     if (!user) {
       setFavorites([]);
@@ -228,14 +163,9 @@ export default function StudentDashboardClient({ initialOpportunities }: Student
               title,
               address,
               city,
+              deadline,
               organization:organization_profiles (
                 name
-              ),
-              shifts:opportunity_shifts (
-                id,
-                start_at,
-                end_at,
-                status
               )
             )
           `,
@@ -263,28 +193,13 @@ export default function StudentDashboardClient({ initialOpportunities }: Student
               return null;
             }
 
-            const shifts = (opportunity.shifts ?? []) as Array<{
-              id: string;
-              start_at: string;
-              end_at: string | null;
-              status: string | null;
-            }>;
-
-            const publishedShifts = shifts.filter((shift) => shift.status === 'published');
-            const upcoming = (publishedShifts.length > 0 ? publishedShifts : shifts)
-              .slice()
-              .sort(
-                (a, b) =>
-                  new Date(a.start_at).getTime() - new Date(b.start_at).getTime(),
-              )[0];
-
             const address = [opportunity.address, opportunity.city].filter(Boolean).join(', ') || null;
 
             return {
               opportunityId: opportunity.id,
               title: opportunity.title,
               organizationName: opportunity.organization?.name ?? 'Ismeretlen szervezet',
-              nextShiftStart: upcoming?.start_at ?? null,
+              deadline: opportunity.deadline ?? null,
               location: address,
             } satisfies FavoriteItem;
           })
@@ -300,156 +215,17 @@ export default function StudentDashboardClient({ initialOpportunities }: Student
     }
   }, [supabase, user]);
 
-  const refreshShiftRegistration = useCallback(
-    async (shiftId: string) => {
-      const { error, count } = await supabase
-        .from('student_applications')
-        .select('id', { count: 'exact', head: true })
-        .eq('shift_id', shiftId)
-        .in('status', ['pending', 'approved']);
-
-      if (error) {
-        console.error('Error loading shift registrations:', error);
-        return;
-      }
-
-      if (typeof count === 'number') {
-        setShiftRegistrations((previous) => ({
-          ...previous,
-          [shiftId]: count,
-        }));
-      }
-    },
-    [supabase],
-  );
-
-  const fetchUpcomingShifts = useCallback(async () => {
-    if (!user) {
-      setUpcomingShifts([]);
-      setUpcomingError(null);
-      setUpcomingLoading(false);
-      return;
-    }
-
-    const studentId = user.id;
-
-    setUpcomingLoading(true);
-    setUpcomingError(null);
-
-    try {
-      const { data, error } = await supabase
-        .from('student_applications')
-        .select(
-          `
-            id,
-            status,
-            shift:opportunity_shifts (
-              id,
-              start_at,
-              end_at,
-              hours_awarded,
-              status,
-              opportunity:opportunities (
-                id,
-                title,
-                address,
-                city,
-                organization:organization_profiles ( name )
-              )
-            )
-          `,
-        )
-        .eq('student_id', studentId)
-        .in('status', ['pending', 'approved'])
-        .order('submitted_at', { ascending: true })
-        .limit(6);
-
-      if (!user || user.id !== studentId) {
-        return;
-      }
-
-      if (error) {
-        console.error('Error loading upcoming shifts:', error);
-        setUpcomingShifts([]);
-        setUpcomingError('Nem sikerült betölteni a jelentkezéseket.');
-        return;
-      }
-
-      const mapped =
-        data
-          ?.map((row) => {
-            if (!row.shift || !row.shift.opportunity) {
-              return null;
-            }
-
-            const { shift } = row;
-            const opportunity = shift.opportunity;
-            const address = [opportunity.address, opportunity.city].filter(Boolean).join(', ') || null;
-
-            return {
-              applicationId: row.id,
-              status: row.status,
-              shiftId: shift.id,
-              startAt: shift.start_at,
-              endAt: shift.end_at ?? null,
-              hoursAwarded: toHoursNumber(shift.hours_awarded),
-              opportunityId: opportunity.id,
-              title: opportunity.title,
-              organizationName: opportunity.organization?.name ?? 'Ismeretlen szervezet',
-              location: address,
-            } satisfies UpcomingShiftItem;
-          })
-          .filter((item): item is UpcomingShiftItem => {
-            if (!item) {
-              return false;
-            }
-
-            // Hide past shifts
-            return new Date(item.startAt).getTime() >= Date.now() - 1000 * 60 * 60 * 24;
-          })
-          .sort(
-            (a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime(),
-          );
-
-      setUpcomingShifts(mapped ?? []);
-    } catch (error) {
-      console.error('Unexpected error loading upcoming shifts:', error);
-      setUpcomingShifts([]);
-      setUpcomingError('Nem sikerült betölteni a jelentkezéseket.');
-    } finally {
-      setUpcomingLoading(false);
-    }
-  }, [supabase, user]);
-
   useEffect(() => {
     if (!user) {
       setFavorites([]);
-      setUpcomingShifts([]);
       setFavoritesError(null);
-      setUpcomingError(null);
       setFavoritesLoading(false);
-      setUpcomingLoading(false);
       setFavoriteUpdatingId(null);
       return;
     }
 
     fetchFavorites();
-    fetchUpcomingShifts();
-  }, [fetchFavorites, fetchUpcomingShifts, user]);
-
-  useEffect(() => {
-    const shiftIds = Array.from(
-      new Set(
-        initialOpportunities
-          .map((opportunity) => opportunity.nextShift?.id)
-          .filter((id): id is string => Boolean(id)),
-      ),
-    );
-
-    shiftIds.forEach((shiftId) => {
-      refreshShiftRegistration(shiftId);
-    });
-  }, [initialOpportunities, refreshShiftRegistration]);
+  }, [fetchFavorites, user]);
 
   useEffect(() => {
     let isMounted = true;
@@ -498,40 +274,6 @@ export default function StudentDashboardClient({ initialOpportunities }: Student
   const favoriteIdList = useMemo(
     () => favorites.map((favorite) => favorite.opportunityId),
     [favorites],
-  );
-
-  const opportunitiesWithCounts = useMemo<AugmentedOpportunity[]>(
-    () =>
-      initialOpportunities.map((opportunity) => {
-        if (!opportunity.nextShift) {
-          return {
-            ...opportunity,
-            hasPendingApplication: false,
-          };
-        }
-
-        const registeredOverride = shiftRegistrations[opportunity.nextShift.id];
-        const hasApplication = upcomingShifts.some(
-          (shift) =>
-            shift.shiftId === opportunity.nextShift?.id &&
-            (shift.status === 'pending' || shift.status === 'approved'),
-        );
-
-      const mergedOpportunity = {
-        ...opportunity,
-        hasPendingApplication: hasApplication,
-      };
-
-      if (registeredOverride !== undefined) {
-        mergedOpportunity.nextShift = {
-          ...opportunity.nextShift,
-          registeredCount: registeredOverride,
-        };
-      }
-
-      return mergedOpportunity;
-    }),
-    [initialOpportunities, shiftRegistrations, upcomingShifts],
   );
 
   const initialOrderMap = useMemo(() => {
@@ -593,48 +335,10 @@ export default function StudentDashboardClient({ initialOpportunities }: Student
     [fetchFavorites, router, supabase, user],
   );
 
-  const handleCancelApplication = useCallback(
-    async (applicationId: string, shiftId: string) => {
-      if (!user) {
-        toast.error('A lemondáshoz be kell jelentkezned!', {
-          action: {
-            label: 'Bejelentkezés',
-            onClick: () => router.push('/student'),
-          },
-        });
-        return;
-      }
-
-      setCancellingApplicationId(applicationId);
-
-      try {
-        const { error } = await supabase
-          .from('student_applications')
-          .update({ status: 'cancelled' })
-          .eq('id', applicationId)
-          .eq('student_id', user.id);
-
-        if (error) {
-          throw error;
-        }
-
-        toast.success('Jelentkezés lemondva.');
-        await fetchUpcomingShifts();
-        await refreshShiftRegistration(shiftId);
-      } catch (error) {
-        console.error('Error cancelling application:', error);
-        toast.error('Nem sikerült lemondani a jelentkezést.');
-      } finally {
-        setCancellingApplicationId(null);
-      }
-    },
-    [fetchUpcomingShifts, refreshShiftRegistration, router, supabase, user],
-  );
-
   const filteredOpportunities = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
 
-    const matches = opportunitiesWithCounts.filter((opportunity) => {
+    const matches = initialOpportunities.filter((opportunity) => {
       if (
         normalizedQuery &&
         !opportunity.title.toLowerCase().includes(normalizedQuery) &&
@@ -649,8 +353,8 @@ export default function StudentDashboardClient({ initialOpportunities }: Student
       }
 
       if (filters.date) {
-        const shiftDate = opportunity.nextShift ? new Date(opportunity.nextShift.startAt) : null;
-        if (!shiftDate || shiftDate.toDateString() !== filters.date.toDateString()) {
+        const deadlineDate = opportunity.deadline ? new Date(opportunity.deadline) : null;
+        if (!deadlineDate || deadlineDate.toDateString() !== filters.date.toDateString()) {
           return false;
         }
       }
@@ -666,10 +370,10 @@ export default function StudentDashboardClient({ initialOpportunities }: Student
     const sorted = [...matches];
 
     switch (filters.sort) {
-      case 'soonest':
+      case 'deadline':
         sorted.sort((a, b) => {
-          const aTime = a.nextShift ? new Date(a.nextShift.startAt).getTime() : Number.POSITIVE_INFINITY;
-          const bTime = b.nextShift ? new Date(b.nextShift.startAt).getTime() : Number.POSITIVE_INFINITY;
+          const aTime = a.deadline ? new Date(a.deadline).getTime() : Number.POSITIVE_INFINITY;
+          const bTime = b.deadline ? new Date(b.deadline).getTime() : Number.POSITIVE_INFINITY;
           return aTime - bTime;
         });
         break;
@@ -691,7 +395,7 @@ export default function StudentDashboardClient({ initialOpportunities }: Student
     }
 
     return sorted;
-  }, [filters, initialOrderMap, opportunitiesWithCounts, searchQuery]);
+  }, [filters, initialOrderMap, initialOpportunities, searchQuery]);
 
   const mapCenter = useMemo(() => {
     if (userLocation) {
@@ -709,150 +413,43 @@ export default function StudentDashboardClient({ initialOpportunities }: Student
     return DEFAULT_MAP_CENTER;
   }, [filteredOpportunities, userLocation]);
 
-  const handleRequest = useCallback(
-    async (opportunityId: string) => {
-      if (!user) {
-        toast.error('A jelentkezéshez be kell jelentkezned!', {
-          description: 'Hozz létre egy fiókot vagy jelentkezz be.',
-          action: {
-            label: 'Bejelentkezés',
-            onClick: () => router.push('/student'),
-          },
-        });
-        return;
-      }
-
-      const opportunity = opportunitiesWithCounts.find((item) => item.id === opportunityId);
+  const handleContactOpportunity = useCallback(
+    (opportunityId: string) => {
+      const opportunity = initialOpportunities.find((item) => item.id === opportunityId);
 
       if (!opportunity) {
         toast.error('Nem található ez a lehetőség.');
         return;
       }
 
-      const nextShift = opportunity.nextShift;
-
-      setEmailOpportunity(opportunity);
-      if (!nextShift) {
-        setEmailShiftId(null);
-        setEmailBody(
-          `Szia ${opportunity.organizationName},\n\nSzeretnék érdeklődni a(z) "${opportunity.title}" lehetőség iránt. ` +
-            'Kérlek jelezz vissza, hogy van-e elérhető műszak számomra.\n\nKöszönöm előre is!\n',
-        );
-      } else {
-        setEmailShiftId(nextShift.id);
-        setEmailBody(
-          `Szia ${opportunity.organizationName},\n\n` +
-            `Jelentkeznék a(z) "${opportunity.title}" lehetőség ${formatDate(nextShift.startAt)} időpontjára. ` +
-            'Kérlek szólj vissza, ha megfelel, illetve ha szükség van további információra.\n\nKöszönöm!\n',
-        );
+      if (!opportunity.organizationEmail) {
+        toast.info('Ehhez a lehetőséghez nem található email cím. Nézd meg a részleteket!');
+        router.push(`/opportunity/${opportunity.id}`);
+        return;
       }
 
-      setEmailDialogOpen(true);
+      const subject = `Érdeklődés: ${opportunity.title}`;
+      const deadlineNote = opportunity.deadline
+        ? ` A megadott határidő: ${formatDate(opportunity.deadline)}.`
+        : '';
+
+      const body = [
+        `Szia ${opportunity.organizationName},`,
+        '',
+        `Érdeklődöm a(z) "${opportunity.title}" lehetőség iránt.${deadlineNote}`,
+        'Kérlek jelezd, hogyan tudok csatlakozni, illetve van-e további információ, amire szükség van.',
+        '',
+        'Köszönöm előre is!',
+      ].join('\n');
+
+      const mailtoLink = `mailto:${encodeURIComponent(
+        opportunity.organizationEmail,
+      )}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+      window.location.href = mailtoLink;
     },
-    [opportunitiesWithCounts, router, user],
+    [initialOpportunities, router],
   );
-
-  const handleSendEmail = useCallback(() => {
-    if (!emailOpportunity?.organizationEmail) {
-      toast.error('Ehhez a lehetőséghez nincs megadott email cím.');
-      return;
-    }
-
-    const subject = `Érdeklődés: ${emailOpportunity.title}`;
-    const mailtoLink = `mailto:${encodeURIComponent(
-      emailOpportunity.organizationEmail,
-    )}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
-
-    window.location.href = mailtoLink;
-  }, [emailBody, emailOpportunity]);
-
-  const handleConfirmSignup = async () => {
-    if (!user) {
-      toast.error('A jelentkezéshez be kell jelentkezned!', {
-        action: {
-          label: 'Bejelentkezés',
-          onClick: () => router.push('/student'),
-        },
-      });
-      return;
-    }
-
-    if (!emailOpportunity || !emailShiftId) {
-      toast.error('Nem sikerült azonosítani a műszakot.');
-      return;
-    }
-
-    setSignupLoadingId(emailOpportunity.id);
-
-    try {
-      const { data: inserted, error } = await supabase
-        .from('student_applications')
-        .insert({
-          student_id: user.id,
-          shift_id: emailShiftId,
-          status: 'pending',
-        })
-        .select('id')
-        .maybeSingle();
-
-      if (error) {
-        if (error.code === '23505') {
-          const { data: existing, error: fetchError } = await supabase
-            .from('student_applications')
-            .select('id, status')
-            .eq('student_id', user.id)
-            .eq('shift_id', emailShiftId)
-            .maybeSingle();
-
-          if (fetchError) {
-            throw fetchError;
-          }
-
-          if (existing) {
-            if (existing.status === 'cancelled') {
-              const { error: updateError } = await supabase
-                .from('student_applications')
-                .update({
-                  status: 'pending',
-                  submitted_at: new Date().toISOString(),
-                })
-                .eq('id', existing.id);
-
-              if (updateError) {
-                throw updateError;
-              }
-
-              toast.success('Jelentkezés újra aktiválva!', {
-                description: 'Értesítjük a szervezőt, hogy ismét számíthat rád.',
-              });
-            } else {
-              toast.info('Már jelentkeztél erre a műszakra.');
-            }
-          }
-        } else {
-          throw error;
-        }
-      } else {
-        toast.success('Jelentkezés elküldve!', {
-          description: 'A szervező hamarosan felveszi veled a kapcsolatot.',
-        });
-
-      }
-
-      await fetchUpcomingShifts();
-      await refreshShiftRegistration(emailShiftId);
-
-      setEmailDialogOpen(false);
-      setEmailOpportunity(null);
-      setEmailShiftId(null);
-      setEmailBody('');
-    } catch (error) {
-      console.error('Error confirming application:', error);
-      toast.error('Nem sikerült elküldeni a jelentkezést.');
-    } finally {
-      setSignupLoadingId(null);
-    }
-  };
 
   const handleMarkerClick = (opportunityId: string) => {
     router.push(`/opportunity/${opportunityId}`);
@@ -870,7 +467,7 @@ export default function StudentDashboardClient({ initialOpportunities }: Student
 
   useEffect(() => {
     if (process.env.NODE_ENV !== 'production') {
-      (window as unknown as Record<string, unknown>).__IKSZ_OPPORTUNITIES = opportunitiesWithCounts.map(
+      (window as unknown as Record<string, unknown>).__IKSZ_OPPORTUNITIES = initialOpportunities.map(
         (opportunity) => ({
           id: opportunity.id,
           title: opportunity.title,
@@ -880,7 +477,7 @@ export default function StudentDashboardClient({ initialOpportunities }: Student
         }),
       );
     }
-  }, [opportunitiesWithCounts]);
+  }, [initialOpportunities]);
 
   if (authLoading) {
     return <div className="p-6">Betöltés...</div>;
@@ -944,15 +541,6 @@ export default function StudentDashboardClient({ initialOpportunities }: Student
                 isLoading={favoritesLoading}
                 error={favoritesError}
                 onViewDetails={handleViewDetails}
-              />
-
-              <UpcomingShiftsPanel
-                items={upcomingShifts}
-                isLoading={upcomingLoading}
-                error={upcomingError}
-                onViewDetails={handleViewDetails}
-                onCancel={handleCancelApplication}
-                cancellingId={cancellingApplicationId}
               />
             </div>
           )}
@@ -1033,13 +621,11 @@ export default function StudentDashboardClient({ initialOpportunities }: Student
                           key={opportunity.id}
                           opportunity={opportunity}
                           distance={isGuestView ? undefined : opportunity.distanceKm}
-                          onRequest={handleRequest}
+                          onContact={handleContactOpportunity}
                           onViewDetails={handleViewDetails}
                           isFavorite={favoriteIds.has(opportunity.id)}
                           onToggleFavorite={handleToggleFavorite}
                           favoriteDisabled={favoriteUpdatingId === opportunity.id}
-                          signupDisabled={signupLoadingId === opportunity.id}
-                          hasPendingApplication={Boolean(opportunity.hasPendingApplication)}
                         />
                       ))
                     )}
@@ -1062,93 +648,7 @@ export default function StudentDashboardClient({ initialOpportunities }: Student
           </div>
         </div>
       </div>
-      <EmailDialog
-        open={emailDialogOpen}
-        onOpenChange={handleEmailDialogOpenChange}
-        opportunity={emailOpportunity}
-        emailBody={emailBody}
-        onEmailBodyChange={setEmailBody}
-        onSendEmail={handleSendEmail}
-        onConfirm={emailShiftId ? handleConfirmSignup : undefined}
-        confirmDisabled={signupLoadingId === emailOpportunity?.id}
-        canConfirm={Boolean(emailShiftId)}
-      />
     </div>
-  );
-}
-
-interface EmailDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  opportunity: Opportunity | null;
-  emailBody: string;
-  onEmailBodyChange: (value: string) => void;
-  onSendEmail: () => void;
-  onConfirm?: () => void;
-  confirmDisabled?: boolean;
-  canConfirm?: boolean;
-}
-
-function EmailDialog({
-  open,
-  onOpenChange,
-  opportunity,
-  emailBody,
-  onEmailBodyChange,
-  onSendEmail,
-  onConfirm,
-  confirmDisabled = false,
-  canConfirm = false,
-}: EmailDialogProps) {
-  const emailAddress = opportunity?.organizationEmail ?? '';
-  const hasEmail = Boolean(emailAddress);
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Kapcsolatfelvétel a szervezővel</DialogTitle>
-          <DialogDescription>
-            Küldj egy rövid bemutatkozó emailt a szervezőnek. Miután elküldted, térj vissza és erősítsd meg az elküldést, hogy rögzíteni tudjuk a jelentkezésed.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-gray-700">Címzett</label>
-            <div className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm">
-              <Mail className="h-4 w-4 text-gray-500" />
-              <span>{emailAddress || 'Nincs megadva email cím'}</span>
-            </div>
-          </div>
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-gray-700">Üzenet</label>
-            <textarea
-              className="w-full min-h-[180px] rounded-lg border px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-              value={emailBody}
-              onChange={(event) => onEmailBodyChange(event.target.value)}
-            />
-          </div>
-        </div>
-        <DialogFooter className="gap-2 sm:justify-between">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Bezárás
-          </Button>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Button variant="secondary" onClick={onSendEmail} disabled={!hasEmail}>
-              {hasEmail ? 'Email megnyitása' : 'Nem elérhető'}
-            </Button>
-            {onConfirm && (
-              <Button
-                onClick={onConfirm}
-                disabled={confirmDisabled || !canConfirm}
-              >
-                {confirmDisabled ? 'Megerősítés...' : 'Elküldtem az emailt'}
-              </Button>
-            )}
-          </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   );
 }
 
@@ -1200,127 +700,12 @@ function FavoritesPanel({ items, isLoading, error, onViewDetails }: FavoritesPan
                     Részletek
                   </Button>
                 </div>
-                {item.nextShiftStart && (
+                {item.deadline && (
                   <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
                     <Calendar className="h-3 w-3" />
-                    <span>{formatDate(item.nextShiftStart)}</span>
-                    <span>•</span>
-                    <Clock className="h-3 w-3" />
-                    <span>{formatTime(item.nextShiftStart)}</span>
+                    <span>Határidő: {formatDate(item.deadline)}</span>
                   </div>
                 )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-interface UpcomingShiftsPanelProps {
-  items: UpcomingShiftItem[];
-  isLoading: boolean;
-  error: string | null;
-  onViewDetails: (opportunityId: string) => void;
-  onCancel?: (applicationId: string, shiftId: string) => void;
-  cancellingId?: string | null;
-}
-
-const statusBadges: Record<string, string> = {
-  approved: 'bg-green-100 text-green-700',
-  pending: 'bg-yellow-100 text-yellow-700',
-  waitlisted: 'bg-orange-100 text-orange-700',
-  rejected: 'bg-red-100 text-red-700',
-};
-
-function UpcomingShiftsPanel({
-  items,
-  isLoading,
-  error,
-  onViewDetails,
-  onCancel,
-  cancellingId,
-}: UpcomingShiftsPanelProps) {
-  return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-lg">Közelgő műszakok</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {isLoading ? (
-          <div className="space-y-2">
-            <Skeleton className="h-4 w-5/6" />
-            <Skeleton className="h-4 w-2/3" />
-            <Skeleton className="h-4 w-full" />
-          </div>
-        ) : error ? (
-          <p className="text-sm text-red-600">{error}</p>
-        ) : items.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Jelenleg nincs közelgő jelentkezésed. Jelentkezz egy lehetőségre, hogy itt megjelenjen.
-          </p>
-        ) : (
-          <ul className="space-y-3">
-            {items.map((item) => (
-              <li key={item.applicationId} className="rounded-lg border p-3 space-y-2">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="font-medium text-sm text-gray-900">{item.title}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {item.organizationName}
-                    </p>
-                    {item.location && (
-                      <p className="text-xs text-muted-foreground mt-1">{item.location}</p>
-                    )}
-                  </div>
-                  <div className="flex flex-col items-end gap-2">
-                    <Badge className={statusBadges[item.status] ?? 'bg-blue-100 text-blue-700'}>
-                      {item.status === 'approved'
-                        ? 'Jóváhagyva'
-                        : item.status === 'pending'
-                        ? 'Folyamatban'
-                        : item.status === 'waitlisted'
-                        ? 'Várólista'
-                        : item.status === 'rejected'
-                        ? 'Elutasítva'
-                        : item.status}
-                    </Badge>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => onViewDetails(item.opportunityId)}
-                    >
-                      Részletek
-                    </Button>
-                    {onCancel && (
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => onCancel(item.applicationId, item.shiftId)}
-                        disabled={cancellingId === item.applicationId}
-                      >
-                        {cancellingId === item.applicationId ? 'Lemondás...' : 'Lemondás'}
-                      </Button>
-                    )}
-                  </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                  <div className="flex items-center gap-1">
-                    <Calendar className="h-3 w-3" />
-                    <span>{formatDate(item.startAt)}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    <span>{formatTime(item.startAt)}</span>
-                  </div>
-                  {item.hoursAwarded !== null && (
-                    <div className="flex items-center gap-1">
-                      <span>•</span>
-                      <span>{item.hoursAwarded} óra</span>
-                    </div>
-                  )}
-                </div>
               </li>
             ))}
           </ul>

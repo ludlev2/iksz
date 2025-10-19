@@ -204,6 +204,7 @@ export const opportunities = pgTable('opportunities', {
   createdBy: uuid('created_by')
     .references(() => profiles.id, { onDelete: 'set null' })
     .notNull(),
+  deadline: timestamp('deadline', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true })
     .defaultNow()
     .notNull(),

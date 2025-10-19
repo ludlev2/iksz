@@ -3,37 +3,16 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Clock, Users, Calendar, Heart } from 'lucide-react';
+import { MapPin, Calendar, Heart, Mail } from 'lucide-react';
+import type { Opportunity } from '@/lib/opportunity-service';
 interface OpportunityCardProps {
-  opportunity: {
-    id: string;
-    title: string;
-    description: string;
-    category: string;
-    categoryLabel: string;
-    location: {
-      address: string;
-      lat?: number;
-      lng?: number;
-    };
-    organizationName: string;
-    nextShift?: {
-      id: string;
-      startAt: string;
-      endAt: string;
-      hoursAwarded?: number;
-      capacity?: number;
-      registeredCount?: number;
-    };
-  };
+  opportunity: Opportunity;
   distance?: number;
-  onRequest?: (id: string) => void;
+  onContact?: (id: string) => void;
   onViewDetails?: (id: string) => void;
   isFavorite?: boolean;
   onToggleFavorite?: (id: string, nextValue: boolean) => void;
   favoriteDisabled?: boolean;
-  signupDisabled?: boolean;
-  hasPendingApplication?: boolean;
 }
 
 const categoryColors: Record<string, string> = {
@@ -53,25 +32,17 @@ const formatDate = (isoDate: string) =>
     day: 'numeric',
   }).format(new Date(isoDate));
 
-const formatTime = (isoDate: string) =>
-  new Intl.DateTimeFormat('hu-HU', {
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(isoDate));
-
 export default function OpportunityCard({
   opportunity,
   distance,
-  onRequest,
+  onContact,
   onViewDetails,
   isFavorite = false,
   onToggleFavorite,
   favoriteDisabled = false,
-  signupDisabled = false,
-  hasPendingApplication = false,
 }: OpportunityCardProps) {
-  const handleRequest = () => {
-    onRequest?.(opportunity.id);
+  const handleContact = () => {
+    onContact?.(opportunity.id);
   };
 
   const handleViewDetails = () => {
@@ -84,67 +55,25 @@ export default function OpportunityCard({
     }
   };
 
-  const nextShift = opportunity.nextShift;
-  const shiftStart = nextShift ? new Date(nextShift.startAt) : null;
-  const shiftEnd = nextShift?.endAt ? new Date(nextShift.endAt) : null;
-
-  let durationHours: number | null = null;
-  if (nextShift) {
-    if (typeof nextShift.hoursAwarded === 'number') {
-      durationHours = nextShift.hoursAwarded;
-    } else if (shiftStart && shiftEnd) {
-      durationHours = Number(((shiftEnd.getTime() - shiftStart.getTime()) / (1000 * 60 * 60)).toFixed(1));
-    }
-  }
-
-  const capacity =
-    nextShift && typeof nextShift.capacity === 'number' ? nextShift.capacity : null;
-  const registered =
-    nextShift && typeof nextShift.registeredCount === 'number' ? nextShift.registeredCount : 0;
-  const availableSpots = capacity !== null ? capacity - registered : null;
-
   const badgeClass =
     categoryColors[opportunity.category] ?? categoryColors.other;
 
-  const availabilityBadge =
-    availableSpots === null
-      ? 'bg-blue-100 text-blue-700'
-      : availableSpots > 5
-      ? 'bg-green-100 text-green-700'
-      : availableSpots > 0
-      ? 'bg-yellow-100 text-yellow-700'
-      : 'bg-red-100 text-red-700';
-
-  const availabilityText =
-    availableSpots === null
-      ? 'Elérhetőség egyeztetés alatt'
-      : availableSpots > 0
-      ? `${availableSpots} hely`
-      : 'Betelt';
-
-  const buttonDisabled =
-    (availableSpots !== null && availableSpots <= 0) || signupDisabled || hasPendingApplication;
-
-  const baseButtonLabel =
-    nextShift && availableSpots === 0
-      ? 'Betelt'
-      : nextShift
-      ? hasPendingApplication
-        ? 'Jelentkezés elküldve'
-        : 'Jelentkezem'
-      : 'Érdeklődés';
-  const buttonLabel =
-    signupDisabled && baseButtonLabel === 'Jelentkezem' ? 'Jelentkezés...' : baseButtonLabel;
   const favoriteLabel = isFavorite ? 'Eltávolítás' : 'Mentés';
   const favoriteVariant = isFavorite ? 'secondary' : 'outline-solid';
-  const actionLayoutClass = onToggleFavorite
-    ? 'pt-2 grid gap-2 sm:grid-cols-3'
-    : 'pt-2 grid gap-2 sm:grid-cols-2';
+  const hasFavoriteAction = Boolean(onToggleFavorite);
+  const hasContactAction = Boolean(onContact);
+  const actionLayoutClass = [
+    'pt-2 grid gap-2',
+    hasFavoriteAction && hasContactAction
+      ? 'sm:grid-cols-3'
+      : hasFavoriteAction || hasContactAction
+      ? 'sm:grid-cols-2'
+      : 'sm:grid-cols-1',
+  ].join(' ');
 
-  const formattedDuration =
-    durationHours !== null
-      ? `${Number.isInteger(durationHours) ? durationHours.toFixed(0) : durationHours.toFixed(1)} óra`
-      : 'Időtartam egyeztetés alatt';
+  const deadlineLabel = opportunity.deadline
+    ? formatDate(opportunity.deadline)
+    : 'Nincs határidő megadva';
 
   return (
     <Card className="hover:shadow-md transition-shadow">
@@ -171,6 +100,9 @@ export default function OpportunityCard({
         </p>
 
         <div className="space-y-2 text-sm">
+          <div className="text-muted-foreground">
+            {opportunity.organizationName}
+          </div>
           <div className="flex items-center gap-2 text-muted-foreground">
             <MapPin className="w-4 h-4" />
             <span>{opportunity.location.address}</span>
@@ -178,29 +110,9 @@ export default function OpportunityCard({
               <span className="text-blue-600">• {distance.toFixed(1)} km</span>
             )}
           </div>
-
           <div className="flex items-center gap-2 text-muted-foreground">
             <Calendar className="w-4 h-4" />
-            <span>
-              {shiftStart ? formatDate(nextShift!.startAt) : 'Időpont egyeztetés alatt'}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Clock className="w-4 h-4" />
-            <span>
-              {shiftStart ? formatTime(nextShift!.startAt) : '—'} • {formattedDuration}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Users className="w-4 h-4" />
-            <span>
-              {capacity !== null ? `${registered}/${capacity} jelentkező` : 'Kapacitás egyeztetés alatt'}
-            </span>
-            <span className={`text-xs px-2 py-1 rounded ${availabilityBadge}`}>
-              {availabilityText}
-            </span>
+            <span>{deadlineLabel}</span>
           </div>
         </div>
 
@@ -225,14 +137,16 @@ export default function OpportunityCard({
           >
             Részletek
           </Button>
-          <Button
-            onClick={handleRequest}
-            disabled={buttonDisabled}
-            className="flex-1"
-            size="sm"
-          >
-            {buttonLabel}
-          </Button>
+          {onContact && (
+            <Button
+              onClick={handleContact}
+              className="flex-1"
+              size="sm"
+            >
+              <Mail className="w-4 h-4 mr-2" />
+              Kapcsolat
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>
