@@ -204,6 +204,7 @@ export const opportunities = pgTable('opportunities', {
   createdBy: uuid('created_by')
     .references(() => profiles.id, { onDelete: 'set null' })
     .notNull(),
+  deadline: timestamp('deadline', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true })
     .defaultNow()
     .notNull(),
@@ -360,6 +361,7 @@ export const submittedOpportunities = pgTable('submitted_opportunities', {
   locationAddress: text('location_address').notNull(),
   city: text('city'),
   shiftDates: text('shift_dates').notNull(),
+  deadline: timestamp('deadline', { withTimezone: true }),
   expectedHours: numeric('expected_hours', 5, 2),
   capacity: integer('capacity'),
   additionalNotes: text('additional_notes'),

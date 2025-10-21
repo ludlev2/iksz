@@ -37,17 +37,15 @@ const submissionSchema = z.object({
     .min(10, 'Írj egy rövid leírást a feladatról (minimum 10 karakter).'),
   locationAddress: z.string().min(3, 'Add meg a helyszín címét.'),
   city: z.string().min(2, 'Add meg a várost.'),
-  shiftDates: z
+  deadline: z
     .string()
-    .min(3, 'Add meg a tervezett időpontot/időpontokat (pl. 2025.03.15. 9:00-13:00).'),
-  expectedHours: z
-    .string()
-    .transform((value) => (value ? Number(value) : undefined))
-    .pipe(z.number().optional()),
-  capacity: z
-    .string()
-    .transform((value) => (value ? Number.parseInt(value, 10) : undefined))
-    .pipe(z.number().int().positive().optional()),
+    .trim()
+    .optional()
+    .refine((value) => {
+      if (!value) return true;
+      const parsed = Date.parse(value);
+      return Number.isFinite(parsed);
+    }, 'Adj meg érvényes dátumot, vagy hagyd üresen.'),
   additionalNotes: z.string().optional(),
 });
 
@@ -72,9 +70,7 @@ export default function SubmitOpportunityPage() {
       opportunityDescription: '',
       locationAddress: '',
       city: '',
-      shiftDates: '',
-      expectedHours: undefined,
-      capacity: undefined,
+      deadline: '',
       additionalNotes: '',
     },
   });
@@ -96,9 +92,10 @@ export default function SubmitOpportunityPage() {
           opportunity_description: values.opportunityDescription,
           location_address: values.locationAddress,
           city: values.city,
-          shift_dates: values.shiftDates,
-          expected_hours: values.expectedHours ?? null,
-          capacity: values.capacity ?? null,
+          shift_dates: values.deadline
+            ? `Határidő: ${values.deadline}`
+            : 'Határidő egyeztetés alatt',
+          deadline: values.deadline ? new Date(values.deadline).toISOString() : null,
           additional_notes: values.additionalNotes ?? null,
         });
 
@@ -309,48 +306,15 @@ export default function SubmitOpportunityPage() {
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="shiftDates">Tervezett időpont(ok) *</Label>
+                    <Label htmlFor="deadline">Határidő (opcionális)</Label>
                     <Input
-                      id="shiftDates"
-                      placeholder="2025.03.15. 9:00-13:00 (vagy részletesebb leírás)"
-                      {...form.register('shiftDates')}
+                      id="deadline"
+                      type="date"
+                      {...form.register('deadline')}
                     />
-                    {form.formState.errors.shiftDates && (
+                    {form.formState.errors.deadline && (
                       <p className="text-sm text-red-600">
-                        {form.formState.errors.shiftDates.message}
-                      </p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="expectedHours">
-                      Várható IKSZ óraszám (opcionális)
-                    </Label>
-                    <Input
-                      id="expectedHours"
-                      type="number"
-                      step="0.5"
-                      min="0"
-                      placeholder="4"
-                      {...form.register('expectedHours')}
-                    />
-                    {form.formState.errors.expectedHours && (
-                      <p className="text-sm text-red-600">
-                        {form.formState.errors.expectedHours.message}
-                      </p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="capacity">Férőhelyek száma (opcionális)</Label>
-                    <Input
-                      id="capacity"
-                      type="number"
-                      min="1"
-                      placeholder="10"
-                      {...form.register('capacity')}
-                    />
-                    {form.formState.errors.capacity && (
-                      <p className="text-sm text-red-600">
-                        {form.formState.errors.capacity.message}
+                        {form.formState.errors.deadline.message}
                       </p>
                     )}
                   </div>

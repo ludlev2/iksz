@@ -13,13 +13,6 @@ const DEFAULT_CENTER: LatLngLiteral = {
   lng: 19.0402,
 };
 
-interface MapShift {
-  startAt?: string;
-  hoursAwarded?: number | null;
-  capacity?: number | null;
-  registeredCount?: number | null;
-}
-
 interface MapOpportunity {
   id: string;
   title: string;
@@ -29,7 +22,8 @@ interface MapOpportunity {
     lng?: number | null;
   };
   categoryLabel?: string;
-  nextShift?: MapShift;
+  deadline?: string | null;
+  organizationName?: string | null;
 }
 
 interface MapProps {
@@ -111,40 +105,16 @@ const escapeHtml = (value: string) =>
     }
   });
 
-const formatShiftSummary = (shift: MapShift | undefined) => {
-  if (!shift?.startAt) {
-    return 'Időpont egyeztetés alatt';
+const formatDeadline = (deadline?: string | null) => {
+  if (!deadline) {
+    return 'Határidő egyeztetés alatt';
   }
 
-  const dateFormatter = new Intl.DateTimeFormat('hu-HU', {
+  return new Intl.DateTimeFormat('hu-HU', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
-  });
-
-  const timeFormatter = new Intl.DateTimeFormat('hu-HU', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
-  const start = new Date(shift.startAt);
-  const date = dateFormatter.format(start);
-  const time = timeFormatter.format(start);
-  const hours =
-    typeof shift.hoursAwarded === 'number'
-      ? `${Number.isInteger(shift.hoursAwarded) ? shift.hoursAwarded.toFixed(0) : shift.hoursAwarded.toFixed(1)} óra`
-      : 'Időtartam egyeztetés alatt';
-
-  return `${date} • ${time} • ${hours}`;
-};
-
-const formatCapacity = (shift: MapShift | undefined) => {
-  if (!shift || typeof shift.capacity !== 'number') {
-    return 'Kapacitás egyeztetés alatt';
-  }
-
-  const registered = typeof shift.registeredCount === 'number' ? shift.registeredCount : 0;
-  return `${registered}/${shift.capacity} jelentkező`;
+  }).format(new Date(deadline));
 };
 
 export default function Map({
@@ -155,6 +125,7 @@ export default function Map({
   userLocation = null,
   favoriteIds = [],
 }: MapProps) {
+  const { lat: centerLat, lng: centerLng } = center;
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
@@ -193,7 +164,7 @@ export default function Map({
         }
 
         const map = new Map(containerRef.current, {
-          center,
+          center: { lat: centerLat, lng: centerLng },
           zoom,
           mapId: 'IKSZ_FINDER_STUDENT_MAP',
           disableDefaultUI: true,
@@ -246,7 +217,7 @@ export default function Map({
       suppressNextZoomRef.current = false;
       mapRef.current = null;
     };
-  }, [apiKey]);
+  }, [apiKey, centerLat, centerLng, zoom]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -308,19 +279,7 @@ export default function Map({
 
       const position = { lat, lng };
 
-      const shift = opportunity.nextShift;
-      const capacity = typeof shift?.capacity === 'number' ? shift.capacity : null;
-      const registered = typeof shift?.registeredCount === 'number' ? shift.registeredCount : 0;
-      const available = capacity !== null ? capacity - registered : null;
-
-      const markerColor =
-        available === null
-          ? '#3b82f6'
-          : available > 5
-            ? '#10b981'
-            : available > 0
-              ? '#f59e0b'
-              : '#ef4444';
+      const markerColor = '#3b82f6';
 
       const isSaved = savedIds.has(opportunity.id);
       const fillColor = isSaved ? '#facc15' : markerColor;
@@ -345,6 +304,11 @@ export default function Map({
         ? '<span style="display:inline-flex;align-items:center;gap:4px;background-color:#fef3c7;color:#92400e;border-radius:9999px;padding:2px 8px;font-size:11px;font-weight:600;">★ Mentve</span>'
         : '';
 
+      const deadlineSummary = formatDeadline(opportunity.deadline);
+      const organizationLine = opportunity.organizationName
+        ? `<div style="margin-bottom: 4px; font-size: 12px; color: #6b7280;">${escapeHtml(opportunity.organizationName)}</div>`
+        : '';
+
       const infoWindowContent = `
         <div style="max-width: 260px; font-family: 'Inter', sans-serif;">
           <h3 style="margin: 0 0 4px; font-size: 15px; font-weight: 600; color: #111827;">
@@ -354,11 +318,9 @@ export default function Map({
           <div style="margin-bottom: 4px; font-size: 13px; color: #4b5563;">
             ${escapeHtml(opportunity.location.address)}
           </div>
-          <div style="margin-bottom: 4px; font-size: 13px; color: #4b5563;">
-            ${escapeHtml(formatShiftSummary(shift))}
-          </div>
+          ${organizationLine}
           <div style="font-size: 12px; color: #6b7280;">
-            ${escapeHtml(formatCapacity(shift))}
+            ${escapeHtml(deadlineSummary)}
           </div>
         </div>
       `;
@@ -419,7 +381,7 @@ export default function Map({
       map.fitBounds(bounds, 64);
     } else if (!hasPoints) {
       suppressNextZoomRef.current = true;
-      map.setCenter(center);
+      map.setCenter({ lat: centerLat, lng: centerLng });
       map.setZoom(zoom);
     }
 
@@ -429,7 +391,7 @@ export default function Map({
         userLocation,
       };
     }
-  }, [center, favoriteIds, isReady, onMarkerClick, opportunities, userLocation, zoom]);
+  }, [centerLat, centerLng, favoriteIds, isReady, onMarkerClick, opportunities, userLocation, zoom]);
 
   useEffect(() => {
     const map = mapRef.current;
