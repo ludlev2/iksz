@@ -6,21 +6,21 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  FileText, 
-  Download, 
-  BookOpen, 
-  HelpCircle, 
-  CheckCircle, 
+import {
+  FileText,
+  Download,
+  BookOpen,
+  HelpCircle,
+  CheckCircle,
   AlertTriangle,
   ExternalLink,
   GraduationCap,
-  Building2,
   Scale,
   Users,
   Clock,
   Shield
 } from 'lucide-react';
+import UNSDGCircularChart from '@/components/UNSDGCircularChart';
 
 const contractTemplates = [
   {
@@ -169,6 +169,26 @@ const usefulLinks = [
   }
 ];
 
+const sdgImpactDemo: Partial<Record<number, number>> = {
+  1: 100,
+  2: 23,
+  3: 4,
+  4: 42,
+  5: 2,
+  6: 5,
+  7: 7,
+  8: 21,
+  9: 56,
+  10: 60,
+  11: 42,
+  12: 30,
+  13: 32,
+  14: 18,
+  15: 9,
+  16: 4,
+  17: 28,
+};
+
 export default function HelpPage() {
   const [activeTab, setActiveTab] = useState('templates');
 
@@ -196,6 +216,42 @@ export default function HelpPage() {
       </header>
 
       <div className="container mx-auto px-4 py-8">
+        <section className="mb-10 grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+          <div className="rounded-xl border bg-white p-6 shadow-sm">
+            <h2 className="text-2xl font-semibold text-gray-900">
+              Hogyan kapcsolódik az IKSZ a Fenntartható Fejlődési Célokhoz?
+            </h2>
+            <p className="mt-3 text-sm text-gray-600 leading-relaxed">
+              Minden közösségi szolgálati program hozzájárulhat az ENSZ 17 Fenntartható Fejlődési
+              Céljának egyikéhez. A kör alakú diagramon azt szemléltetjük, hogy az IKSZ Finderen leadott
+              lehetőségek milyen arányban kapcsolódnak az egyes célokhoz.
+            </p>
+            <ul className="mt-4 space-y-2 text-sm text-gray-700">
+              <li className="flex items-start gap-2">
+                <CheckCircle className="mt-[2px] h-4 w-4 text-green-500" />
+                Piros területek jelzik azokat a célokat, ahol már kiemelkedő a diákok aktivitása.
+              </li>
+              <li className="flex items-start gap-2">
+                <CheckCircle className="mt-[2px] h-4 w-4 text-green-500" />
+                A kisebb százalék a további lehetőségek feltárását ösztönzi – használjátok a sablonokat
+                új programok indításához!
+              </li>
+              <li className="flex items-start gap-2">
+                <CheckCircle className="mt-[2px] h-4 w-4 text-green-500" />
+                Tartsd az egeret a célokra: animáltan kiemelve, tooltipben jelennek meg a részletek.
+              </li>
+            </ul>
+          </div>
+
+          <Card className="flex items-center justify-center bg-slate-900/5 p-4">
+            <UNSDGCircularChart
+              values={sdgImpactDemo}
+              centerLabel={'IKSZ\nImpact'}
+              className="max-w-[360px] w-full"
+            />
+          </Card>
+        </section>
+
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="templates" className="flex items-center gap-2">
