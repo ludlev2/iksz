@@ -7,19 +7,57 @@ const TOTAL_HOURS = 50;
 const SCROLL_SENSITIVITY = 1600;
 const TOUCH_SENSITIVITY = 450;
 const LOCK_THRESHOLD_RATIO = 0.35;
+const ANIMATION_STIFFNESS = 0.14;
+const ANIMATION_THRESHOLD = 0.001;
 
 const clamp = (value: number, min = 0, max = 1) => Math.min(Math.max(value, min), max);
 
 export function HeroVisualizer() {
-  const [progress, setProgress] = useState(0);
+  const [displayProgress, setDisplayProgress] = useState(0);
   const progressRef = useRef(0);
+  const displayProgressRef = useRef(0);
+  const animationFrameRef = useRef<number | null>(null);
   const lastTouchY = useRef<number | null>(null);
   const lockPositionRef = useRef<number | null>(null);
+  const lockDisabledRef = useRef(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
+  const startAnimation = () => {
+    if (animationFrameRef.current !== null) {
+      return;
+    }
+    animationFrameRef.current = requestAnimationFrame(step);
+  };
+
+  function step() {
+    const target = progressRef.current;
+    const current = displayProgressRef.current;
+    const diff = target - current;
+
+    if (Math.abs(diff) < ANIMATION_THRESHOLD) {
+      displayProgressRef.current = target;
+      setDisplayProgress(target);
+      animationFrameRef.current = null;
+      return;
+    }
+
+    const next = current + diff * ANIMATION_STIFFNESS;
+    displayProgressRef.current = next;
+    setDisplayProgress(next);
+    animationFrameRef.current = requestAnimationFrame(step);
+  }
+
   useEffect(() => {
-    progressRef.current = progress;
-  }, [progress]);
+    displayProgressRef.current = displayProgress;
+  }, [displayProgress]);
+
+  useEffect(() => {
+    return () => {
+      if (animationFrameRef.current !== null) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -38,6 +76,10 @@ export function HeroVisualizer() {
     };
 
     const shouldLock = (delta: number) => {
+      if (lockDisabledRef.current) {
+        return false;
+      }
+
       const element = containerRef.current;
       if (!element) {
         return false;
@@ -52,10 +94,10 @@ export function HeroVisualizer() {
       }
 
       if (delta < 0) {
-        return rect.top <= threshold && current > 0;
+        return rect.top <= threshold && current > 0 && current < 1;
       }
 
-      return lockPositionRef.current !== null;
+      return lockPositionRef.current !== null && current > 0 && current < 1;
     };
 
     const maintainLock = () => {
@@ -77,14 +119,16 @@ export function HeroVisualizer() {
       }
 
       progressRef.current = next;
-      setProgress(next);
+      startAnimation();
     };
 
     const releaseLockIfComplete = (delta: number) => {
       if (delta > 0 && progressRef.current >= 1) {
         lockPositionRef.current = null;
+        lockDisabledRef.current = true;
       } else if (delta < 0 && progressRef.current <= 0) {
         lockPositionRef.current = null;
+        lockDisabledRef.current = false;
       }
     };
 
@@ -172,10 +216,31 @@ export function HeroVisualizer() {
     };
   }, []);
 
-  const filledHours = Math.round(progress * TOTAL_HOURS);
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const resetIfAtTop = () => {
+      if (window.scrollY < 12 && lockDisabledRef.current && progressRef.current >= 1) {
+        lockDisabledRef.current = false;
+        lockPositionRef.current = null;
+        progressRef.current = 0;
+        displayProgressRef.current = 0;
+        setDisplayProgress(0);
+      }
+    };
+
+    window.addEventListener('scroll', resetIfAtTop, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', resetIfAtTop);
+    };
+  }, []);
+
+  const filledHours = Math.round(displayProgress * TOTAL_HOURS);
   const remainingHours = Math.max(TOTAL_HOURS - filledHours, 0);
-  const progressWidth = `${progress * 100}%`;
-  const progressPercent = Math.round(progress * 100);
+  const progressWidth = `${displayProgress * 100}%`;
+  const progressPercent = Math.round(displayProgress * 100);
 
   return (
     <div ref={containerRef} className="relative aspect-[3/4] w-full max-w-lg">
@@ -213,7 +278,7 @@ export function HeroVisualizer() {
               </div>
               <div className="mt-4 h-3 w-full rounded-full bg-white/20">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-sky-300 via-indigo-300 to-cyan-300 transition-[width] duration-150 ease-out"
+                  className="h-full rounded-full bg-gradient-to-r from-sky-300 via-indigo-300 to-cyan-300 transition-[width] duration-300 ease-out"
                   style={{ width: progressWidth }}
                 />
               </div>
