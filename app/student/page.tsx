@@ -110,18 +110,18 @@ export default function StudentPage() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-slate-950">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(36,99,235,0.18),transparent_55%)]" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(236,72,153,0.16),transparent_60%)]" />
-      <div className="pointer-events-none absolute inset-0 bg-grid-white/[0.04] opacity-60" />
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-[#0f2a5f] via-[#0b1f3f] to-[#063a3d]">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(125,211,252,0.32),transparent_60%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(16,185,129,0.28),transparent_62%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-grid-white/[0.08] opacity-75" />
       <div className="relative z-10 flex min-h-screen items-center justify-center px-4 py-12">
         <div className="grid w-full max-w-6xl items-center gap-12 md:grid-cols-[minmax(0,1.15fr)_minmax(0,0.95fr)]">
           <aside className="space-y-10 text-white">
             <Link
               href="/"
-              className="inline-flex items-center gap-2 text-xl font-semibold text-slate-200 transition hover:text-white"
+              className="inline-flex items-center gap-2 text-xl font-semibold text-slate-100 transition hover:text-white"
             >
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 backdrop-blur">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/15 backdrop-blur">
                 <GraduationCap className="h-6 w-6" />
               </div>
               IKSZ Finder
@@ -131,7 +131,7 @@ export default function StudentPage() {
               <h1 className="text-4xl font-semibold leading-tight md:text-5xl">
                 Teljesítsd az 50 IKSZ órádat magabiztosan.
               </h1>
-              <p className="max-w-xl text-sm text-slate-200/80">
+              <p className="max-w-xl text-sm text-slate-100/85">
                 Fedezz fel hiteles önkéntes lehetőségeket, tartsd nyomon az előrehaladásodat,
                 és kérj jóváhagyást a tanáraidtól egyetlen felületen.
               </p>
@@ -155,7 +155,7 @@ export default function StudentPage() {
                 size="lg"
                 variant="outline"
                 onClick={handleContinueWithoutLogin}
-                className="h-12 rounded-xl border-white/20 bg-white/10 text-white backdrop-blur transition hover:bg-white/20"
+                className="h-12 rounded-xl border-white/15 bg-white/15 text-white backdrop-blur transition hover:bg-white/20"
               >
                 Böngészés vendégként
               </Button>
@@ -172,11 +172,11 @@ export default function StudentPage() {
             )}
 
             {view === 'login' && (
-              <div className="shadow-input relative w-full rounded-3xl border border-white/10 bg-white/[0.07] p-6 text-white backdrop-blur md:p-8">
+              <div className="shadow-input relative w-full rounded-3xl border border-white/15 bg-white/[0.12] p-6 text-white backdrop-blur md:p-8">
                 <button
                   type="button"
                   onClick={() => switchView('landing')}
-                  className="absolute left-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/10 text-slate-200 transition hover:bg-white/20 md:left-6 md:top-6"
+                  className="absolute left-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-white/15 text-slate-100 transition hover:bg-white/25 md:left-6 md:top-6"
                   aria-label="Vissza az opciókhoz"
                 >
                   <ArrowLeft className="h-4 w-4" />
@@ -184,7 +184,7 @@ export default function StudentPage() {
 
                 <div className="mt-6 space-y-2 md:mt-8">
                   <h2 className="text-2xl font-semibold">Bejelentkezés</h2>
-                  <p className="text-sm text-slate-200/75">
+                  <p className="text-sm text-slate-100/80">
                     Lépj be a fiókodba, és kövesd nyomon az IKSZ óráid teljesítését.
                   </p>
                 </div>
@@ -200,7 +200,7 @@ export default function StudentPage() {
                       onChange={(event) => setEmail(event.target.value)}
                       placeholder="pelda@email.hu"
                       required
-                      className="h-11 rounded-xl border-white/20 bg-white/5 text-white placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-indigo-400"
+                      className="h-11 rounded-xl border-white/15 bg-white/12 text-white placeholder:text-slate-200/80 focus-visible:ring-2 focus-visible:ring-sky-400"
                     />
                   </LabelInputContainer>
 
@@ -211,16 +211,16 @@ export default function StudentPage() {
                         id="login-password"
                         type={showPassword ? 'text' : 'password'}
                         autoComplete="current-password"
-                        value={password}
-                        onChange={(event) => setPassword(event.target.value)}
-                        placeholder="••••••••"
-                        required
-                        className="h-11 rounded-xl border-white/20 bg-white/5 pr-12 text-white placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-indigo-400"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword((previous) => !previous)}
-                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-300 transition hover:text-white"
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      placeholder="••••••••"
+                      required
+                      className="h-11 rounded-xl border-white/15 bg-white/12 pr-12 text-white placeholder:text-slate-200/80 focus-visible:ring-2 focus-visible:ring-sky-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((previous) => !previous)}
+                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-200 transition hover:text-white"
                         aria-label={showPassword ? 'Jelszó elrejtése' : 'Jelszó megjelenítése'}
                       >
                         {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -234,7 +234,7 @@ export default function StudentPage() {
                   </GradientButton>
                 </form>
 
-                <div className="mt-6 space-y-2 text-center text-sm text-slate-200/75">
+                <div className="mt-6 space-y-2 text-center text-sm text-slate-100/80">
                   <p>
                     Nincs még fiókod?{' '}
                     <button
@@ -248,7 +248,7 @@ export default function StudentPage() {
                   <button
                     type="button"
                     onClick={() => switchView('landing')}
-                    className="text-xs text-slate-300/80 underline-offset-4 transition hover:text-white hover:underline"
+                    className="text-xs text-slate-200/80 underline-offset-4 transition hover:text-white hover:underline"
                   >
                     Vissza az opciókhoz
                   </button>
@@ -257,11 +257,11 @@ export default function StudentPage() {
             )}
 
             {view === 'register' && (
-              <div className="shadow-input relative w-full rounded-3xl border border-white/10 bg-white/[0.07] p-6 text-white backdrop-blur md:p-8">
+              <div className="shadow-input relative w-full rounded-3xl border border-white/15 bg-white/[0.12] p-6 text-white backdrop-blur md:p-8">
                 <button
                   type="button"
                   onClick={() => switchView('landing')}
-                  className="absolute left-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/10 text-slate-200 transition hover:bg-white/20 md:left-6 md:top-6"
+                  className="absolute left-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-white/15 text-slate-100 transition hover:bg-white/25 md:left-6 md:top-6"
                   aria-label="Vissza az opciókhoz"
                 >
                   <ArrowLeft className="h-4 w-4" />
@@ -269,7 +269,7 @@ export default function StudentPage() {
 
                 <div className="mt-6 space-y-2 md:mt-8">
                   <h2 className="text-2xl font-semibold">Új diák fiók létrehozása</h2>
-                  <p className="text-sm text-slate-200/75">
+                  <p className="text-sm text-slate-100/80">
                     Foglalj le műszakokat, mentsd a kedvenceidet és tartsd kézben az IKSZ teljesítési
                     folyamataidat.
                   </p>
@@ -284,7 +284,7 @@ export default function StudentPage() {
                       onChange={(event) => setName(event.target.value)}
                       placeholder="Név vezeték és keresztnév"
                       required
-                      className="h-11 rounded-xl border-white/20 bg-white/5 text-white placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-indigo-400"
+                      className="h-11 rounded-xl border-white/15 bg-white/12 text-white placeholder:text-slate-200/80 focus-visible:ring-2 focus-visible:ring-sky-400"
                     />
                   </LabelInputContainer>
 
@@ -298,7 +298,7 @@ export default function StudentPage() {
                       onChange={(event) => setEmail(event.target.value)}
                       placeholder="pelda@email.hu"
                       required
-                      className="h-11 rounded-xl border-white/20 bg-white/5 text-white placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-indigo-400"
+                      className="h-11 rounded-xl border-white/15 bg-white/12 text-white placeholder:text-slate-200/80 focus-visible:ring-2 focus-visible:ring-sky-400"
                     />
                   </LabelInputContainer>
 
@@ -314,12 +314,12 @@ export default function StudentPage() {
                           onChange={(event) => setPassword(event.target.value)}
                           placeholder="••••••••"
                           required
-                          className="h-11 rounded-xl border-white/20 bg-white/5 pr-12 text-white placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-indigo-400"
+                          className="h-11 rounded-xl border-white/15 bg-white/12 pr-12 text-white placeholder:text-slate-200/80 focus-visible:ring-2 focus-visible:ring-sky-400"
                         />
                         <button
                           type="button"
                           onClick={() => setShowPassword((previous) => !previous)}
-                          className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-300 transition hover:text-white"
+                          className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-200 transition hover:text-white"
                           aria-label={showPassword ? 'Jelszó elrejtése' : 'Jelszó megjelenítése'}
                         >
                           {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -338,12 +338,12 @@ export default function StudentPage() {
                           onChange={(event) => setConfirmPassword(event.target.value)}
                           placeholder="••••••••"
                           required
-                          className="h-11 rounded-xl border-white/20 bg-white/5 pr-12 text-white placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-indigo-400"
+                          className="h-11 rounded-xl border-white/15 bg-white/12 pr-12 text-white placeholder:text-slate-200/80 focus-visible:ring-2 focus-visible:ring-sky-400"
                         />
                         <button
                           type="button"
                           onClick={() => setShowConfirmPassword((previous) => !previous)}
-                          className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-300 transition hover:text-white"
+                          className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-200 transition hover:text-white"
                           aria-label={showConfirmPassword ? 'Jelszó elrejtése' : 'Jelszó megjelenítése'}
                         >
                           {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -359,7 +359,7 @@ export default function StudentPage() {
                       value={school}
                       onChange={(event) => setSchool(event.target.value)}
                       placeholder="Iskolád neve"
-                      className="h-11 rounded-xl border-white/20 bg-white/5 text-white placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-indigo-400"
+                      className="h-11 rounded-xl border-white/15 bg-white/12 text-white placeholder:text-slate-200/80 focus-visible:ring-2 focus-visible:ring-sky-400"
                     />
                   </LabelInputContainer>
 
@@ -374,7 +374,7 @@ export default function StudentPage() {
                       value={grade}
                       onChange={(event) => setGrade(event.target.value)}
                       placeholder="Pl. 11"
-                      className="h-11 rounded-xl border-white/20 bg-white/5 text-white placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-indigo-400"
+                      className="h-11 rounded-xl border-white/15 bg-white/12 text-white placeholder:text-slate-200/80 focus-visible:ring-2 focus-visible:ring-sky-400"
                     />
                   </LabelInputContainer>
 
@@ -384,7 +384,7 @@ export default function StudentPage() {
                   </GradientButton>
                 </form>
 
-                <div className="mt-6 space-y-2 text-center text-sm text-slate-200/75">
+                <div className="mt-6 space-y-2 text-center text-sm text-slate-100/80">
                   <p>
                     Van már fiókod?{' '}
                     <button
@@ -398,7 +398,7 @@ export default function StudentPage() {
                   <button
                     type="button"
                     onClick={() => switchView('landing')}
-                    className="text-xs text-slate-300/80 underline-offset-4 transition hover:text-white hover:underline"
+                    className="text-xs text-slate-200/80 underline-offset-4 transition hover:text-white hover:underline"
                   >
                     Vissza az opciókhoz
                   </button>
@@ -437,9 +437,9 @@ function LandingCard({
   onContinue: () => void;
 }) {
   return (
-    <div className="shadow-input w-full rounded-3xl border border-white/10 bg-white/[0.07] p-6 text-white backdrop-blur md:p-8">
+    <div className="shadow-input w-full rounded-3xl border border-white/15 bg-white/[0.12] p-6 text-white backdrop-blur md:p-8">
       <h2 className="text-2xl font-semibold">Készen állsz a kezdésre?</h2>
-      <p className="mt-2 text-sm text-slate-200/80">
+      <p className="mt-2 text-sm text-slate-100/85">
         Hozz létre egy diák fiókot néhány perc alatt, vagy jelentkezz be, ha már regisztráltál.
       </p>
 
@@ -452,7 +452,7 @@ function LandingCard({
         <button
           type="button"
           onClick={onLogin}
-          className="group flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 text-sm font-semibold text-white transition hover:border-white/25 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
+          className="group flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/10 text-sm font-semibold text-white transition hover:border-white/25 hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b1f3f]"
         >
           Már van fiókom
           <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
@@ -462,13 +462,13 @@ function LandingCard({
           type="button"
           variant="ghost"
           onClick={onContinue}
-          className="h-11 w-full rounded-xl text-slate-200 hover:bg-white/10 hover:text-white"
+          className="h-11 w-full rounded-xl text-slate-100 hover:bg-white/12 hover:text-white"
         >
           Böngészés vendégként
         </Button>
       </div>
 
-      <div className="mt-6 border-t border-white/10 pt-4 text-center text-xs text-slate-300/70">
+      <div className="mt-6 border-t border-white/15 pt-4 text-center text-xs text-slate-200/75">
         <Link href="/" className="hover:text-white hover:underline">
           ← Vissza a főoldalra
         </Link>
@@ -486,7 +486,7 @@ function GradientButton({
     <button
       {...props}
       className={cn(
-        'group/btn relative flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 font-semibold text-white shadow-[0px_1px_0px_0px_rgba(255,255,255,0.25)_inset,0px_-1px_0px_0px_rgba(255,255,255,0.15)_inset] transition duration-300 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 disabled:cursor-not-allowed disabled:opacity-70',
+        'group/btn relative flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-sky-500 via-cyan-500 to-emerald-500 font-semibold text-white shadow-[0px_1px_0px_0px_rgba(255,255,255,0.25)_inset,0px_-1px_0px_0px_rgba(255,255,255,0.15)_inset] transition duration-300 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b1f3f] disabled:cursor-not-allowed disabled:opacity-70',
         className,
       )}
     >
@@ -498,8 +498,8 @@ function GradientButton({
 
 const BottomGradient = () => (
   <>
-    <span className="pointer-events-none absolute inset-x-0 -bottom-px block h-px w-full bg-gradient-to-r from-transparent via-cyan-500/70 to-transparent opacity-0 transition duration-500 group-hover/btn:opacity-100" />
-    <span className="pointer-events-none absolute inset-x-14 -bottom-px mx-auto block h-px w-1/2 bg-gradient-to-r from-transparent via-purple-500/70 to-transparent opacity-0 blur-sm transition duration-500 group-hover/btn:opacity-100" />
+    <span className="pointer-events-none absolute inset-x-0 -bottom-px block h-px w-full bg-gradient-to-r from-transparent via-sky-400/70 to-transparent opacity-0 transition duration-500 group-hover/btn:opacity-100" />
+    <span className="pointer-events-none absolute inset-x-14 -bottom-px mx-auto block h-px w-1/2 bg-gradient-to-r from-transparent via-emerald-400/70 to-transparent opacity-0 blur-sm transition duration-500 group-hover/btn:opacity-100" />
   </>
 );
 
@@ -516,12 +516,12 @@ function LabelInputContainer({
 function FeatureItem({ title, description }: { title: string; description: string }) {
   return (
     <div className="flex items-start gap-3">
-      <div className="mt-1 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-blue-200">
+      <div className="mt-1 flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-sky-100">
         <Check className="h-4 w-4" />
       </div>
       <div>
         <p className="text-sm font-medium text-white">{title}</p>
-        <p className="text-xs text-slate-200/70">{description}</p>
+        <p className="text-xs text-slate-100/80">{description}</p>
       </div>
     </div>
   );

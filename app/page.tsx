@@ -1,10 +1,11 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { ArrowRight, Check, GraduationCap, LucideIcon, MapPin, Sparkles, ShieldCheck, Clock } from 'lucide-react';
+import { ArrowRight, GraduationCap, LucideIcon, MapPin, ShieldCheck, Clock } from 'lucide-react';
 import { HeroHighlight, Highlight } from '@/components/aceternity/hero-highlight';
 import { BentoGrid, BentoGridItem } from '@/components/aceternity/bento-grid';
 import { InfiniteMovingCards } from '@/components/aceternity/infinite-moving-cards';
+import { HeroVisualizer } from '@/components/home/hero-visualizer';
 
 const HERO_STATS = [
   { label: 'Aktív diák', value: '1 200+' },
@@ -81,24 +82,24 @@ const TESTIMONIALS = [
 
 export default function Home() {
   return (
-    <div className="relative min-h-screen overflow-hidden bg-slate-950 text-white">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.22),transparent_60%)]" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(129,140,248,0.2),transparent_55%)]" />
-      <div className="pointer-events-none absolute inset-0 bg-grid-white/[0.05]" />
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-[#12346b] via-[#0f2752] to-[#0a2146] text-white">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(147,197,253,0.3),transparent_62%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(129,196,253,0.22),transparent_58%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-grid-white/[0.07] opacity-90" />
 
-      <header className="sticky top-0 z-30 border-b border-white/10 bg-slate-950/80 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b border-white/15 bg-slate-900/75 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <Link href="/" className="inline-flex items-center gap-2 font-semibold text-white">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/15">
               <GraduationCap className="h-5 w-5" />
             </div>
             IKSZ Finder
-            <span className="text-xs font-normal text-slate-300/70">beta</span>
+            <span className="text-xs font-normal text-slate-200/70">beta</span>
           </Link>
-          <div className="hidden items-center gap-3 text-sm text-slate-200/80 md:flex">
-            <span className="rounded-full border border-white/10 px-3 py-1">Diákoknak</span>
-            <span className="rounded-full border border-white/10 px-3 py-1">Szervezőknek</span>
-            <span className="rounded-full border border-white/10 px-3 py-1">Tanároknak</span>
+          <div className="hidden items-center gap-3 text-sm text-slate-100/80 md:flex">
+            <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1">Diákoknak</span>
+            <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1">Szervezőknek</span>
+            <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1">Tanároknak</span>
           </div>
           <Link href="/student">
             <Button className="hidden rounded-xl bg-white text-slate-900 shadow-md hover:bg-slate-100 md:block">
@@ -117,10 +118,10 @@ export default function Home() {
         <CtaSection />
       </main>
 
-      <footer className="relative z-10 border-t border-white/10 bg-slate-950/70">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-6 py-10 text-center text-sm text-slate-400 md:flex-row md:items-center md:justify-between md:text-left">
+      <footer className="relative z-10 border-t border-white/15 bg-slate-900/70">
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-6 py-10 text-center text-sm text-slate-200/70 md:flex-row md:items-center md:justify-between md:text-left">
           <p>© {new Date().getFullYear()} IKSZ Finder. Minden jog fenntartva.</p>
-          <div className="flex items-center justify-center gap-4 text-xs text-slate-400">
+          <div className="flex items-center justify-center gap-4 text-xs text-slate-200/70">
             <Link href="/help" className="hover:text-white">
               Segítség
             </Link>
@@ -147,7 +148,7 @@ function HeroSection() {
         <h1 className="max-w-3xl text-balance text-4xl font-semibold leading-tight text-white sm:text-5xl md:text-6xl">
           {`Az IKSZ teljesítése, pont úgy, ahogy egy 2025-ös diáknak szüksége van rá.`}
         </h1>
-        <p className="max-w-2xl text-balance text-sm text-slate-200/80 sm:text-base md:text-lg">
+        <p className="max-w-2xl text-balance text-sm text-slate-100/85 sm:text-base md:text-lg">
           Válassz hiteles szervezetek közül, foglalj műszakokat, gyűjts digitális igazolásokat és igazoltasd
           az óráidat egy átlátható, modern felületen.
         </p>
@@ -161,7 +162,7 @@ function HeroSection() {
           <Link href="/login">
             <Button
               variant="outline"
-              className="rounded-2xl border-white/20 bg-white/10 text-white backdrop-blur transition hover:bg-white/20"
+              className="rounded-2xl border-white/15 bg-white/15 text-white backdrop-blur transition hover:bg-white/20"
             >
               Szervezői belépés
             </Button>
@@ -171,10 +172,10 @@ function HeroSection() {
           {HERO_STATS.map((stat) => (
             <div
               key={stat.label}
-              className="rounded-2xl border border-white/10 bg-white/[0.08] px-6 py-5 text-left shadow-lg shadow-slate-900/30 backdrop-blur"
+              className="rounded-2xl border border-white/15 bg-white/[0.12] px-6 py-5 text-left shadow-lg shadow-slate-900/25 backdrop-blur"
             >
               <p className="text-2xl font-semibold text-white sm:text-3xl">{stat.value}</p>
-              <p className="mt-1 text-xs uppercase tracking-wide text-slate-300">{stat.label}</p>
+              <p className="mt-1 text-xs uppercase tracking-wide text-slate-200/80">{stat.label}</p>
             </div>
           ))}
         </div>
@@ -187,60 +188,10 @@ function HeroSection() {
   );
 }
 
-function HeroVisualizer() {
-  return (
-    <div className="relative aspect-[4/5] w-full max-w-md">
-      <div className="absolute inset-0 rounded-[2.5rem] bg-gradient-to-br from-blue-500/30 via-indigo-400/20 to-teal-400/30 blur-3xl" />
-      <div className="relative z-10 flex h-full flex-col justify-between rounded-[2.5rem] border border-white/10 bg-white/[0.07] p-8 shadow-[0_25px_50px_-12px_rgba(15,23,42,0.8)] backdrop-blur">
-        <header className="flex items-center justify-between text-xs text-slate-200/80">
-          <span className="rounded-full border border-white/15 px-4 py-1 uppercase tracking-[0.3em]">Live</span>
-          <span>IKSZ Dashboard</span>
-        </header>
-        <div className="space-y-6">
-          <div className="space-y-2">
-            <h3 className="text-lg font-semibold text-white">Következő műszakod</h3>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.08] p-4 text-sm text-slate-200">
-              <p className="flex items-center gap-2 text-white">
-                <Sparkles className="h-4 w-4 text-blue-300" />
-                Napfény Idősek Otthona
-              </p>
-              <p className="mt-2 text-xs uppercase tracking-wide text-slate-300">
-                Október 18. · 17:30–21:00 · 4 óra
-              </p>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <h4 className="text-sm font-semibold uppercase tracking-wider text-slate-200/70">
-              Éves előrehaladás
-            </h4>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.08] p-5 text-sm">
-              <div className="flex items-center justify-between text-xs uppercase text-slate-300">
-                <span>Teljesített órák</span>
-                <span>32 / 50</span>
-              </div>
-              <div className="mt-3 h-2 w-full rounded-full bg-white/10">
-                <div className="h-full w-[64%] rounded-full bg-gradient-to-r from-blue-300 via-indigo-300 to-purple-300" />
-              </div>
-              <div className="mt-4 flex items-center gap-2 text-xs text-slate-300">
-                <Check className="h-3.5 w-3.5 text-emerald-300" />
-                14 óra jóváhagyás alatt
-              </div>
-            </div>
-          </div>
-        </div>
-        <footer className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.06] p-4 text-xs text-slate-200">
-          <span>IKSZ napló automatikusan frissítve</span>
-          <span className="rounded-full bg-emerald-400/20 px-3 py-1 text-emerald-200">szinkronban</span>
-        </footer>
-      </div>
-    </div>
-  );
-}
-
 function LogosSection() {
   return (
-    <section className="relative border-y border-white/5 bg-white/[0.04]">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-6 px-6 py-10 text-xs uppercase tracking-[0.25em] text-slate-400 md:gap-10">
+    <section className="relative border-y border-white/12 bg-white/[0.05]">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-6 px-6 py-10 text-xs uppercase tracking-[0.25em] text-slate-100/80 md:gap-10">
         <span>ELTE</span>
         <span>Fazekas</span>
         <span>Vöröskereszt</span>
@@ -258,10 +209,10 @@ function FeaturesSection() {
       <div className="mx-auto max-w-6xl px-6">
         <div className="mx-auto max-w-2xl text-center">
           <Highlight>Ami miatt szeretni fogod</Highlight>
-          <h2 className="mt-6 text-3xl font-semibold text-white sm:text-4xl">
+          <h2 className="mt-6 text-3xl font-semibold text-slate-50 sm:text-4xl">
             Teljes eszköztár az 50 óra kézben tartásához
           </h2>
-          <p className="mt-3 text-sm text-slate-200/80">
+          <p className="mt-3 text-sm text-slate-100/85">
             Egy platform, ahol a diák, a fogadó szervezet és a tanár is ugyanazt a naprakész információt
             látja. Nem kell többé külön űrlapokat, Excel-táblákat és papír szerződéseket vadásznod.
           </p>
@@ -270,7 +221,7 @@ function FeaturesSection() {
           {FEATURE_CARDS.map((feature, index) => (
             <BentoGridItem
               key={feature.title}
-              icon={<feature.icon className="h-10 w-10 text-indigo-200" />}
+              icon={<feature.icon className="h-10 w-10 text-sky-100" />}
               title={feature.title}
               description={feature.description}
               className={index === 0 ? 'md:col-span-2' : undefined}
@@ -291,14 +242,14 @@ function FeaturesSection() {
 
 function JourneySection() {
   return (
-    <section className="relative border-y border-white/10 bg-white/[0.06] py-24">
+    <section className="relative border-y border-white/12 bg-white/[0.07] py-24">
       <div className="mx-auto max-w-6xl px-6">
         <div className="space-y-6 text-center">
           <Highlight>Három egyszerű lépés</Highlight>
-          <h2 className="text-3xl font-semibold text-white sm:text-4xl">
+          <h2 className="text-3xl font-semibold text-slate-50 sm:text-4xl">
             Így jutnak el a diákok a nulláról a hitelesített órákig
           </h2>
-          <p className="mx-auto max-w-2xl text-sm text-slate-200/80">
+          <p className="mx-auto max-w-2xl text-sm text-slate-100/85">
             Minden folyamat digitalizálva, automatikus státuszokkal és értesítésekkel. A tanárok és a
             szervezők is ugyanazt látják, mint a diák.
           </p>
@@ -309,14 +260,14 @@ function JourneySection() {
             <div
               key={step.title}
               className={cn(
-                'relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.07] p-6 text-left shadow-lg backdrop-blur transition hover:bg-white/[0.1]',
+                'relative overflow-hidden rounded-3xl border border-white/15 bg-white/[0.1] p-6 text-left shadow-lg backdrop-blur transition hover:bg-white/[0.16]',
                 index % 2 === 1 ? 'md:ml-20' : 'md:mr-20',
               )}
             >
-              <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-blue-400/70 via-purple-400/60 to-transparent" />
+              <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-sky-300/80 via-indigo-300/70 to-transparent" />
               <div className="pl-4 md:pl-6">
-                <p className="text-xs uppercase tracking-[0.4em] text-slate-300">{step.title}</p>
-                <p className="mt-3 text-sm text-slate-200/85 sm:text-base">{step.description}</p>
+                <p className="text-xs uppercase tracking-[0.4em] text-slate-200">{step.title}</p>
+                <p className="mt-3 text-sm text-slate-100/85 sm:text-base">{step.description}</p>
               </div>
             </div>
           ))}
@@ -332,10 +283,10 @@ function TestimonialsSection() {
       <div className="mx-auto max-w-6xl px-6">
         <div className="space-y-6 text-center">
           <Highlight>Visszajelzés</Highlight>
-          <h2 className="text-3xl font-semibold text-white sm:text-4xl">
+          <h2 className="text-3xl font-semibold text-slate-50 sm:text-4xl">
             Slow admin? Papírmunka? Ebben a valóságban nem.
           </h2>
-          <p className="mx-auto max-w-2xl text-sm text-slate-200/80">
+          <p className="mx-auto max-w-2xl text-sm text-slate-100/85">
             Diákok, szervezetek és koordinátorok meséltek arról, hogyan rövidült le az ügyintézési idő.
           </p>
         </div>
@@ -351,15 +302,15 @@ function TestimonialsSection() {
 function CtaSection() {
   return (
     <section className="relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 via-purple-500/20 to-sky-500/20 blur-3xl" />
+      <div className="absolute inset-0 bg-gradient-to-br from-sky-300/35 via-indigo-400/35 to-cyan-300/35 blur-3xl" />
       <div className="relative mx-auto max-w-5xl px-6 py-20 text-center">
-        <div className="inline-flex items-center rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs uppercase tracking-[0.3em] text-slate-200">
+        <div className="inline-flex items-center rounded-full border border-white/15 bg-white/15 px-4 py-2 text-xs uppercase tracking-[0.3em] text-slate-100">
           Ready to launch
         </div>
-        <h2 className="mt-6 text-3xl font-semibold text-white sm:text-4xl">
+        <h2 className="mt-6 text-3xl font-semibold text-slate-50 sm:text-4xl">
           {`Lépj be a digitális IKSZ korszakba.`}
         </h2>
-        <p className="mt-3 text-base text-slate-200/75 sm:text-lg">
+        <p className="mt-3 text-base text-slate-100/80 sm:text-lg">
           Ingyenes diák regisztráció, szervezői pilot programok és tanári oktatóanyagok már elérhetőek.
         </p>
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -371,7 +322,7 @@ function CtaSection() {
           <Link href="/submit">
             <Button
               variant="outline"
-              className="rounded-2xl border-white/20 bg-white/10 text-white backdrop-blur transition hover:bg-white/20"
+              className="rounded-2xl border-white/15 bg-white/15 text-white backdrop-blur transition hover:bg-white/20"
             >
               Szervezet beküldése
             </Button>
