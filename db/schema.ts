@@ -310,6 +310,25 @@ export const favorites = pgTable(
   }),
 );
 
+export const opportunityReviews = pgTable('opportunity_reviews', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  opportunityId: uuid('opportunity_id')
+    .references(() => opportunities.id, { onDelete: 'cascade' })
+    .notNull(),
+  studentId: uuid('student_id').references(() => profiles.id, {
+    onDelete: 'set null',
+  }),
+  reviewerDisplayName: text('reviewer_display_name'),
+  ratings: jsonb('ratings').notNull(),
+  comment: text('comment').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
 export const documentTemplates = pgTable('document_templates', {
   id: uuid('id').defaultRandom().primaryKey(),
   type: documentType('type').notNull(),
