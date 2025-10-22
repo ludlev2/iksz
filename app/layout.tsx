@@ -4,7 +4,6 @@ import { Inter } from 'next/font/google';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { OpportunityProvider } from '@/contexts/OpportunityContext';
 import { Toaster } from '@/components/ui/sonner';
-import { createClient } from '@/utils/supabase/server';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -18,15 +17,10 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
   return (
     <html lang="hu">
       <body className={inter.className}>
-        <AuthProvider initialSession={session}>
+        <AuthProvider initialSession={null}>
           <OpportunityProvider>
             {children}
             <Toaster />

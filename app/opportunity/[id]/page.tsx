@@ -13,9 +13,11 @@ interface OpportunityPageProps {
 export const revalidate = 60;
 
 export default async function OpportunityDetailPage({ params }: OpportunityPageProps) {
+  const { id } = await Promise.resolve(params);
+
   const [opportunity, reviews] = await Promise.all([
-    fetchOpportunityById(params.id),
-    fetchReviewsForOpportunity(params.id),
+    fetchOpportunityById(id),
+    fetchReviewsForOpportunity(id),
   ]);
 
   if (!opportunity) {
