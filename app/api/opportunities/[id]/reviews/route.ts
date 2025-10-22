@@ -12,15 +12,16 @@ interface RouteParams {
   };
 }
 
-const getOpportunityId = ({ params }: RouteParams): string | null => {
-  if (!params?.id || typeof params.id !== 'string') {
+const getOpportunityId = async ({ params }: RouteParams): Promise<string | null> => {
+  const resolvedParams = await Promise.resolve(params);
+  if (!resolvedParams?.id || typeof resolvedParams.id !== 'string') {
     return null;
   }
-  return params.id;
+  return resolvedParams.id;
 };
 
 export async function GET(_: Request, context: RouteParams) {
-  const opportunityId = getOpportunityId(context);
+  const opportunityId = await getOpportunityId(context);
   if (!opportunityId) {
     return NextResponse.json({ error: 'Hiányzó lehetőség azonosító.' }, { status: 400 });
   }
@@ -35,7 +36,7 @@ export async function GET(_: Request, context: RouteParams) {
 }
 
 export async function POST(request: Request, context: RouteParams) {
-  const opportunityId = getOpportunityId(context);
+  const opportunityId = await getOpportunityId(context);
   if (!opportunityId) {
     return NextResponse.json({ error: 'Hiányzó lehetőség azonosító.' }, { status: 400 });
   }

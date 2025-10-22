@@ -348,14 +348,26 @@ export function AuthProvider({
     let isCancelled = false;
 
     const hydrate = async () => {
-      if (!session?.user) {
+      if (!session) {
         setUser(null);
         return;
       }
 
       setIsProfileLoading(true);
       try {
-        const hydrated = await hydrateUser(session.user);
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+
+        if (userError || !userData?.user) {
+          if (userError) {
+            console.error('Error fetching authenticated user:', userError);
+          }
+          if (!isCancelled) {
+            setUser(null);
+          }
+          return;
+        }
+
+        const hydrated = await hydrateUser(userData.user);
         if (!isCancelled) {
           setUser(hydrated);
         }
